@@ -1,6 +1,6 @@
 import json
 import pytest
-from harness.logging.trace_logger import TraceLogger
+from harness.tracing.trace_logger import TraceLogger
 
 
 class TestTraceLogger:

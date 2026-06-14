@@ -333,7 +333,7 @@ async def test_trace_logger():
     """Test structured JSONL logging."""
     print("=== 10. Trace Logger ===")
     import json
-    from harness.logging.trace_logger import TraceLogger
+    from harness.tracing.trace_logger import TraceLogger
 
     with tempfile.TemporaryDirectory() as tmp:
         log_path = os.path.join(tmp, "traces.jsonl")

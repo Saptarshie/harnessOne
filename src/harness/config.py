@@ -68,6 +68,28 @@ class HarnessConfig:
     api_host: str = "0.0.0.0"
     api_port: int = 8000
 
+    # Self-improvement settings (v3.1)
+    improvement_enabled: bool = True
+    tracker_storage_path: str = ".harness/prompt_metrics"
+    tracker_max_history: int = 1000
+    optimizer_enabled: bool = True
+    optimizer_min_samples: int = 10
+    optimizer_improvement_threshold: float = 0.05
+    evolution_enabled: bool = False
+    evolution_population_size: int = 20
+    evolution_generations: int = 10
+    evolution_mutation_rate: float = 0.1
+    evolution_crossover_rate: float = 0.7
+
+    # Global memory settings (v3.1)
+    global_memory_enabled: bool = True
+    global_memory_storage_path: str = ".harness/global_memory"
+    global_memory_max_entries: int = 10000
+
+    # Scratchpad settings (v3.1)
+    scratchpad_enabled: bool = True
+    scratchpad_max_entries: int = 100
+
 
 def _load_yaml(path: Path) -> dict:
     """Load a YAML file safely."""
@@ -198,6 +220,14 @@ def load_config(config_path: str, global_config_path: str = None) -> HarnessConf
     skills = raw.get("skills", {})
     tools = raw.get("tools", {})
     api = raw.get("api", {})
+    improvement = raw.get("improvement", {})
+    global_memory = raw.get("global_memory", {})
+    scratchpad = raw.get("scratchpad", {})
+
+    # Parse improvement sub-sections
+    tracker = improvement.get("tracker", {})
+    optimizer = improvement.get("optimizer", {})
+    evolution = improvement.get("evolution", {})
 
     # Merge all skills paths (global + local)
     all_skills_paths = global_skills_paths + local_skills_paths
@@ -237,4 +267,20 @@ def load_config(config_path: str, global_config_path: str = None) -> HarnessConf
         api_enabled=api.get("enabled", False),
         api_host=api.get("host", "0.0.0.0"),
         api_port=api.get("port", 8000),
+        improvement_enabled=improvement.get("enabled", True),
+        tracker_storage_path=tracker.get("storage_path", ".harness/prompt_metrics"),
+        tracker_max_history=tracker.get("max_history", 1000),
+        optimizer_enabled=optimizer.get("enabled", True),
+        optimizer_min_samples=optimizer.get("min_samples", 10),
+        optimizer_improvement_threshold=optimizer.get("improvement_threshold", 0.05),
+        evolution_enabled=evolution.get("enabled", False),
+        evolution_population_size=evolution.get("population_size", 20),
+        evolution_generations=evolution.get("generations", 10),
+        evolution_mutation_rate=evolution.get("mutation_rate", 0.1),
+        evolution_crossover_rate=evolution.get("crossover_rate", 0.7),
+        global_memory_enabled=global_memory.get("enabled", True),
+        global_memory_storage_path=global_memory.get("storage_path", ".harness/global_memory"),
+        global_memory_max_entries=global_memory.get("max_entries", 10000),
+        scratchpad_enabled=scratchpad.get("enabled", True),
+        scratchpad_max_entries=scratchpad.get("max_entries", 100),
     )

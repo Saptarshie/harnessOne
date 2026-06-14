@@ -2,6 +2,7 @@
 
 import json
 import logging
+import time
 from typing import Any, Callable, Awaitable
 
 from harness.session.session import Session
@@ -25,12 +26,20 @@ class ChatEngine:
         session: Session,
         skill_loader: SkillLoader | None = None,
         memory_context: str = "",
+        tracker: Any | None = None,
+        scratchpad: Any | None = None,
+        global_memory: Any | None = None,
+        trace_logger: Any | None = None,
     ):
         self._llm = llm
         self._tools = tool_registry
         self._session = session
         self._skills = skill_loader
         self._memory_context = memory_context
+        self._tracker = tracker
+        self._scratchpad = scratchpad
+        self._global_memory = global_memory
+        self._trace_logger = trace_logger
 
     @property
     def session(self) -> Session:
@@ -53,9 +62,11 @@ class ChatEngine:
             Final assistant response text.
         """
         self._session.add_user_message(message)
+        start_time = time.time()
+        tool_calls_count = 0
 
         while True:
-            system = self._build_system_prompt()
+            system = self._build_system_prompt(message)
             messages = self._session.get_messages_for_llm()
             tools = self._tools.get_tools_as_openai()
 
@@ -80,6 +91,7 @@ class ChatEngine:
 
             # Handle tool calls
             if tool_calls:
+                tool_calls_count += len(tool_calls)
                 tool_calls_data = [
                     {
                         "id": tc.id,
@@ -114,7 +126,67 @@ class ChatEngine:
                 if on_stream:
                     await on_stream("", True, usage)
 
+                # Record metric in tracker
+                self._record_metric(
+                    message, response_text, usage, tool_calls_count, start_time
+                )
+
+                # Log trace
+                self._log_trace(message, response_text, usage, tool_calls_count)
+
                 return response_text
+
+    def _record_metric(
+        self,
+        user_message: str,
+        response_text: str,
+        usage: dict,
+        tool_calls_count: int,
+        start_time: float,
+    ):
+        """Record a prompt/response metric in the tracker."""
+        if not self._tracker:
+            return
+
+        from harness.improvement.tracker import PromptMetric
+
+        latency_ms = (time.time() - start_time) * 1000
+        tokens_used = usage.get("input_tokens", 0) + usage.get("output_tokens", 0)
+
+        metric = PromptMetric(
+            prompt_id="default",
+            prompt_text="system",
+            response_text=response_text or "",
+            user_message=user_message,
+            tokens_used=tokens_used,
+            latency_ms=latency_ms,
+            tool_calls=tool_calls_count,
+            success=True,
+        )
+        self._tracker.record(metric)
+
+    def _log_trace(
+        self,
+        user_message: str,
+        response_text: str,
+        usage: dict,
+        tool_calls_count: int,
+    ):
+        """Log a trace entry for the conversation turn."""
+        if not self._trace_logger:
+            return
+
+        self._trace_logger.log(
+            trace_id=self._session.id,
+            node="chat_engine",
+            iteration=1,
+            input_tokens=usage.get("input_tokens", 0),
+            output_tokens=usage.get("output_tokens", 0),
+            success=True,
+            user_message=user_message[:100],
+            response_preview=(response_text or "")[:100],
+            tool_calls=tool_calls_count,
+        )
 
     async def _stream_response(
         self,
@@ -172,10 +244,11 @@ class ChatEngine:
 
         return full_text, parsed_tool_calls, usage
 
-    def _build_system_prompt(self) -> str:
-        """Build system prompt with skills and memory context."""
+    def _build_system_prompt(self, user_message: str = "") -> str:
+        """Build system prompt with skills, memory, scratchpad, and global memory context."""
         parts = ["You are a helpful AI assistant with access to tools."]
 
+        # Add skills context
         if self._skills:
             skill_list = self._skills.get_all_skills()
             if skill_list:
@@ -192,6 +265,21 @@ class ChatEngine:
                             if content:
                                 parts.append(f"\n## Skill: {skill['name']}\n{content[:2000]}")
 
+        # Add scratchpad context
+        if self._scratchpad:
+            scratchpad_context = self._scratchpad.to_context_string()
+            if scratchpad_context:
+                parts.append(f"\n{scratchpad_context}")
+
+        # Query global memory for relevant context
+        if self._global_memory and user_message:
+            memory_results = self._global_memory.retrieve(user_message, limit=3)
+            if memory_results:
+                parts.append("\n## Relevant Knowledge")
+                for entry in memory_results:
+                    parts.append(f"- [{entry.category}] {entry.key}: {entry.content}")
+
+        # Add MCP memory context
         if self._memory_context:
             parts.append(f"\n## Memory Context\n{self._memory_context}")
 

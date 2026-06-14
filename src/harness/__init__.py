@@ -16,6 +16,12 @@ from harness.tools.builtin.search import register_search_tools
 from harness.tools.builtin.web import register_web_tool
 from harness.chat.engine import ChatEngine
 from harness.mcp.manager import MCPManager
+from harness.improvement.tracker import PromptTracker
+from harness.improvement.optimizer import PromptOptimizer
+from harness.improvement.evolution import EvolutionaryEngine
+from harness.memory.global_store import GlobalMemory
+from harness.memory.scratchpad import Scratchpad
+from harness.tracing.trace_logger import TraceLogger
 
 logger = logging.getLogger(__name__)
 
@@ -48,6 +54,47 @@ class CognitiveHarness:
         self._session: Session | None = None
         self._chat_engine: ChatEngine | None = None
 
+        # Self-improvement subsystems (v3.1)
+        if config.improvement_enabled:
+            self._tracker = PromptTracker(
+                storage_path=config.tracker_storage_path,
+                max_history=config.tracker_max_history,
+            )
+            self._optimizer = PromptOptimizer(
+                tracker=self._tracker,
+                min_samples=config.optimizer_min_samples,
+                improvement_threshold=config.optimizer_improvement_threshold,
+            )
+            self._evolution = EvolutionaryEngine(
+                gene_keys=["role", "constraints", "style"],
+                population_size=config.evolution_population_size,
+                mutation_rate=config.evolution_mutation_rate,
+                crossover_rate=config.evolution_crossover_rate,
+            )
+        else:
+            self._tracker = None
+            self._optimizer = None
+            self._evolution = None
+
+        # Global memory (v3.1)
+        if config.global_memory_enabled:
+            self._global_memory = GlobalMemory(
+                storage_path=config.global_memory_storage_path,
+            )
+        else:
+            self._global_memory = None
+
+        # Scratchpad (v3.1)
+        if config.scratchpad_enabled:
+            self._scratchpad = Scratchpad(
+                max_entries=config.scratchpad_max_entries,
+            )
+        else:
+            self._scratchpad = None
+
+        # Trace logger (always created)
+        self._trace_logger = TraceLogger(log_path=config.jsonl_path)
+
     async def startup(self):
         """Initialize all subsystems."""
         if self._config.skills_auto_load:
@@ -55,8 +102,20 @@ class CognitiveHarness:
         self._register_builtin_tools()
         await self._start_mcp_servers()
 
+        # Load persisted state for v3.1 modules
+        if self._global_memory:
+            self._global_memory.load()
+        if self._tracker:
+            self._tracker.load()
+
     async def shutdown(self):
-        """Clean up resources."""
+        """Clean up resources and persist state."""
+        # Persist v3.1 state
+        if self._global_memory:
+            self._global_memory.persist()
+        if self._tracker:
+            self._tracker.persist()
+
         try:
             await self._mcp_manager.stop_all()
         except Exception:
@@ -149,6 +208,10 @@ class CognitiveHarness:
             session=self._session,
             skill_loader=self._skill_loader,
             memory_context=mcp_context,
+            tracker=self._tracker,
+            scratchpad=self._scratchpad,
+            global_memory=self._global_memory,
+            trace_logger=self._trace_logger,
         )
         return self._session.id
 
@@ -184,6 +247,47 @@ class CognitiveHarness:
     async def list_mcp_tools(self) -> list[dict]:
         """List all MCP tools from connected servers."""
         return self._mcp_manager.get_all_tools()
+
+    # ── v3.1 Public API ──
+
+    def get_improvement_report(self) -> dict:
+        """Get prompt optimization report."""
+        if not self._optimizer:
+            return {"prompts": [], "total_metrics": 0}
+        return self._optimizer.get_report()
+
+    def get_memory_stats(self) -> dict:
+        """Get global memory statistics."""
+        if not self._global_memory:
+            return {"total_entries": 0, "categories": {}}
+        return self._global_memory.get_stats()
+
+    def store_memory(self, key: str, content: str, category: str = "general"):
+        """Store a memory entry."""
+        if self._global_memory:
+            self._global_memory.store(key, content, category=category)
+
+    def retrieve_memory(self, query: str, category: str = None, limit: int = 5) -> list:
+        """Retrieve memory entries matching query."""
+        if not self._global_memory:
+            return []
+        return self._global_memory.retrieve(query, category=category, limit=limit)
+
+    def set_scratchpad(self, label: str, content: str, priority: int = 5):
+        """Set a scratchpad entry."""
+        if self._scratchpad:
+            self._scratchpad.set(label, content, priority=priority)
+
+    def get_scratchpad(self, label: str) -> str | None:
+        """Get a scratchpad entry."""
+        if not self._scratchpad:
+            return None
+        return self._scratchpad.get(label)
+
+    def clear_scratchpad(self):
+        """Clear all scratchpad entries."""
+        if self._scratchpad:
+            self._scratchpad.clear()
 
     # Legacy v1/v2 interface
     async def invoke(self, prompt: str) -> str:
