@@ -55,7 +55,15 @@ class ToolRegistry:
         """Get tool descriptions for system prompt injection."""
         lines = ["Available tools:"]
         for t in self._tools.values():
-            params_desc = ", ".join(f"{k}: {v.get('type', 'string')}" for k, v in t.parameters.items())
+            # Handle both simple and JSON Schema parameter formats
+            if isinstance(t.parameters, dict):
+                props = t.parameters.get("properties", t.parameters)
+                params_desc = ", ".join(
+                    f"{k}: {v.get('type', 'string') if isinstance(v, dict) else 'string'}"
+                    for k, v in props.items()
+                )
+            else:
+                params_desc = ""
             lines.append(f"- `{t.name}({params_desc})` - {t.description}")
         return "\n".join(lines)
 

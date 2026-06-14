@@ -24,10 +24,10 @@ mcp_servers:
     args: ["-y", "@modelcontextprotocol/server-filesystem", "."]
 
   # Context7 — up-to-date library documentation (local)
-  - name: context7
-    type: local
-    command: npx
-    args: ["-y", "@upstash/context7-mcp"]
+  # - name: context7
+  #   type: local
+  #   command: npx
+  #   args: ["-y", "@upstash/context7-mcp"]
 
   # PDF tools
   # - name: pdf
