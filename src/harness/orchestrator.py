@@ -1,5 +1,6 @@
 """Plugin orchestrator — builds and executes the LangGraph state graph."""
 
+import asyncio
 import logging
 import uuid
 from typing import Any
@@ -29,13 +30,22 @@ class Orchestrator:
         """Start the MCP client for memory operations."""
         if self.config.vault_path:
             from harness.memory.mcp_client import MCPClient
+            import sys
             self._mcp_client = MCPClient(
                 server_path=self.config.mcp_server_path,
                 vault_path=self.config.vault_path,
                 embedding_model=self.config.embedding_model,
             )
             try:
-                await self._mcp_client.start()
+                # Suppress stderr from MCP server subprocess
+                import os
+                old_stderr = sys.stderr
+                sys.stderr = open(os.devnull, 'w')
+                try:
+                    await self._mcp_client.start()
+                finally:
+                    sys.stderr.close()
+                    sys.stderr = old_stderr
                 logger.info("MCP client started")
             except Exception as e:
                 logger.warning(f"Failed to start MCP client: {e}")
@@ -44,7 +54,10 @@ class Orchestrator:
     async def shutdown_mcp_client(self):
         """Shut down the MCP client."""
         if self._mcp_client:
-            await self._mcp_client.shutdown()
+            try:
+                await asyncio.shield(self._mcp_client.shutdown())
+            except Exception:
+                pass
             self._mcp_client = None
 
     def _get_node(self, name: str) -> BaseNode:

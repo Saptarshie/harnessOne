@@ -1,5 +1,6 @@
 """Cognitive LLM Harness — plugin-based reasoning engine."""
 
+from pathlib import Path
 from harness.config import HarnessConfig, load_config
 from harness.orchestrator import Orchestrator
 from harness.session.session import Session
@@ -46,12 +47,19 @@ class CognitiveHarness:
         if self._config.skills_auto_load:
             self._skill_loader.discover()
         self._register_builtin_tools()
-        if self._config.vault_path:
-            await self._orchestrator.start_mcp_client()
+        # MCP is optional — only start if vault exists and is needed
+        if self._config.vault_path and Path(self._config.vault_path).exists():
+            try:
+                await self._orchestrator.start_mcp_client()
+            except Exception:
+                pass
 
     async def shutdown(self):
         """Clean up resources."""
-        await self._orchestrator.shutdown_mcp_client()
+        try:
+            await self._orchestrator.shutdown_mcp_client()
+        except Exception:
+            pass
 
     def _register_builtin_tools(self):
         """Register all enabled built-in tools."""
