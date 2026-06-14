@@ -32,6 +32,16 @@ class HarnessConfig:
     jsonl_path: str = "logs/traces.jsonl"
     enable_thought_tracking: bool = True
 
+    # Memory settings (v2)
+    vault_path: str = "vault"
+    embedding_model: str = "Qwen/Qwen3-Embedding-0.6B"
+    embedding_device: str = "cpu"
+    embedding_quantize: bool = True
+    memory_top_k: int = 5
+    keyword_weight: float = 0.4
+    embedding_weight: float = 0.6
+    mcp_server_path: str = "mcp_server/server.py"
+
 
 def load_config(config_path: str) -> HarnessConfig:
     """Load and validate configuration from a YAML file.
@@ -92,6 +102,16 @@ def load_config(config_path: str) -> HarnessConfig:
     jsonl_path = logging_cfg.get("jsonl_path", "logs/traces.jsonl")
     enable_thought_tracking = logging_cfg.get("enable_thought_tracking", True)
 
+    memory = raw.get("memory", {})
+    vault_path = memory.get("vault_path", "vault")
+    embedding_model = memory.get("embedding_model", "Qwen/Qwen3-Embedding-0.6B")
+    embedding_device = memory.get("embedding_device", "cpu")
+    embedding_quantize = memory.get("embedding_quantize", True)
+    memory_top_k = memory.get("top_k", 5)
+    keyword_weight = memory.get("keyword_weight", 0.4)
+    embedding_weight = memory.get("embedding_weight", 0.6)
+    mcp_server_path = memory.get("mcp_server_path", "mcp_server/server.py")
+
     return HarnessConfig(
         model=model,
         api_base=api_base,
@@ -107,4 +127,12 @@ def load_config(config_path: str) -> HarnessConfig:
         log_level=log_level,
         jsonl_path=jsonl_path,
         enable_thought_tracking=enable_thought_tracking,
+        vault_path=vault_path,
+        embedding_model=embedding_model,
+        embedding_device=embedding_device,
+        embedding_quantize=embedding_quantize,
+        memory_top_k=memory_top_k,
+        keyword_weight=keyword_weight,
+        embedding_weight=embedding_weight,
+        mcp_server_path=mcp_server_path,
     )

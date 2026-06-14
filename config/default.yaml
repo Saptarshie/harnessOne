@@ -17,3 +17,13 @@ logging:
   level: "INFO"
   jsonl_path: "logs/traces.jsonl"
   enable_thought_tracking: true
+
+memory:
+  vault_path: "vault"
+  embedding_model: "Qwen/Qwen3-Embedding-0.6B"
+  embedding_device: "cpu"
+  embedding_quantize: true
+  top_k: 5
+  keyword_weight: 0.4
+  embedding_weight: 0.6
+  mcp_server_path: "mcp_server/server.py"

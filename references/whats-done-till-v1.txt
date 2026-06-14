@@ -40,3 +40,50 @@ What's deferred to v2/v3:
 - Obsidian MCP memory (graph queries, derivation trees)
 - DSPy/EGPA self-improvement
 - Global memory & scratchpad
+
+
+V2:
+----------------------------------------------------------------------------------------------------------
+
+# Todos
+[✓] Explore project context for v2
+[✓] Ask clarifying questions for v2 Obsidian MCP memory
+[✓] Propose approaches for v2
+[•] Present v2 design sections
+[ ] Write v2 design doc
+[ ] Spec self-review
+[ ] User reviews v2 spec
+[ ] Transition to v2 implementation plan
++ Thought: 106ms
+Design Section 1: MCP Server
+The MCP server is a standalone Python process that manages the Obsidian vault. It communicates with the harness via stdio using the MCP protocol.
+Tools exposed by the server:
+Tool	Input
+query_graph	subject?, relation?, object?
+get_derivation_tree	concept
+write_note	title, content, tags, links
+add_relation	subject, relation, object
+search_vault	query, top_k
+Vault structure:
+vault/
+├── checkpoints/          # A, B', C' checkpoints
+│   ├── checkpoint-uuid.md
+│   └── ...
+├── derivations/          # Logical derivation chains
+│   ├── derivation-uuid.md
+│   └── ...
+├── concepts/             # Knowledge graph nodes
+│   ├── concept-name.md
+│   └── ...
+├── relations/            # (optional) explicit relation files
+└── .embeddings/          # Local embedding index
+    └── index.faiss
+Each note uses YAML frontmatter:
+---
+id: uuid-123
+type: checkpoint
+created: 2026-06-14T10:30:00Z
+tags: [memory-leak, ddp, pytorch]
+links: [[concept-ddp], [[concept-memory-management]]]
+---
+Does this look right?
