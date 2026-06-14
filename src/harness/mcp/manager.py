@@ -11,9 +11,12 @@ logger = logging.getLogger(__name__)
 @dataclass
 class MCPServerConfig:
     name: str
-    command: str
-    args: list[str]
-    env: dict | None = None
+    transport: str  # "stdio", "sse", "streamable_http"
+    command: str = None
+    args: list[str] = None
+    env: dict = None
+    url: str = None
+    headers: dict = None
     auto_start: bool = True
 
 
@@ -24,35 +27,82 @@ class MCPManager:
         self._configs: dict[str, MCPServerConfig] = {}
         self._clients: dict[str, GenericMCPClient] = {}
 
-    def register_server(self, name: str, command: str, args: list[str] = None,
-                        auto_start: bool = True, env: dict = None):
+    def register_server(self, name: str, transport: str = "stdio",
+                        command: str = None, args: list[str] = None,
+                        env: dict = None, url: str = None,
+                        headers: dict = None, auto_start: bool = True):
         """Register an MCP server configuration."""
         self._configs[name] = MCPServerConfig(
-            name=name, command=command, args=args or [], auto_start=auto_start, env=env,
+            name=name, transport=transport,
+            command=command, args=args or [], env=env,
+            url=url, headers=headers, auto_start=auto_start,
         )
 
     def register_from_config(self, servers_config: list[dict]):
-        """Register servers from config YAML list.
+        """Register servers from config YAML/JSON list.
 
-        Each entry should have:
-          name: str
-          command: str (e.g. "npx", "uvx", "python")
-          args: list[str] (e.g. ["-y", "@modelcontextprotocol/server-filesystem", "."])
-          env: dict (optional, env vars to set)
-          auto_start: bool (optional, default true)
+        Format (opencode-compatible):
+          - name: server-name
+            type: local|remote           # maps to transport
+            command: npx                 # for local (stdio)
+            args: ["-y", "package"]      # for local (stdio)
+            url: https://...             # for remote (sse/streamable_http)
+            headers: {Authorization: ..} # for remote
+            env: {KEY: value}            # environment variables
+            enabled: true|false          # auto_start
+
+        Legacy format (also supported):
+          - name: server-name
+            command: npx
+            args: ["-y", "package"]
         """
         for srv in servers_config:
             name = srv.get("name")
-            command = srv.get("command")
-            if not name or not command:
-                logger.warning(f"Skipping MCP server with missing name/command: {srv}")
+            if not name:
+                logger.warning(f"Skipping MCP server with missing name: {srv}")
                 continue
+
+            # Determine transport from 'type' or infer
+            srv_type = srv.get("type", "local")
+            if srv_type in ("local", "stdio"):
+                transport = "stdio"
+                command = srv.get("command")
+                if not command:
+                    logger.warning(f"Skipping local MCP '{name}': missing command")
+                    continue
+            elif srv_type in ("remote", "sse"):
+                transport = "sse"
+                url = srv.get("url")
+                if not url:
+                    logger.warning(f"Skipping remote MCP '{name}': missing url")
+                    continue
+            elif srv_type == "streamable_http":
+                transport = "streamable_http"
+                url = srv.get("url")
+                if not url:
+                    logger.warning(f"Skipping streamable_http MCP '{name}': missing url")
+                    continue
+            else:
+                # Infer transport
+                if srv.get("url"):
+                    transport = "sse"
+                    url = srv["url"]
+                elif srv.get("command"):
+                    transport = "stdio"
+                    command = srv["command"]
+                else:
+                    logger.warning(f"Skipping MCP '{name}': can't determine transport")
+                    continue
+
             self.register_server(
                 name=name,
-                command=command,
+                transport=transport,
+                command=srv.get("command"),
                 args=srv.get("args", []),
-                auto_start=srv.get("auto_start", True),
                 env=srv.get("env"),
+                url=srv.get("url"),
+                headers=srv.get("headers"),
+                auto_start=srv.get("enabled", srv.get("auto_start", True)),
             )
 
     def get_server_names(self) -> list[str]:
@@ -103,16 +153,19 @@ class MCPManager:
         config = self._configs[name]
         client = GenericMCPClient(
             name=name,
+            transport=config.transport,
             command=config.command,
             args=config.args,
             env=config.env,
+            url=config.url,
+            headers=config.headers,
         )
         try:
             await client.start()
             self._clients[name] = client
-            logger.info(f"Started MCP server: {name} ({len(client.tools)} tools)")
+            logger.info(f"Started MCP: {name} ({len(client.tools)} tools)")
         except Exception as e:
-            logger.warning(f"Failed to start MCP server {name}: {e}")
+            logger.warning(f"Failed to start MCP '{name}': {e}")
 
     async def stop_all(self):
         """Stop all connected servers."""

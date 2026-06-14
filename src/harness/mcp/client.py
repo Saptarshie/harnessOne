@@ -1,4 +1,4 @@
-"""Generic MCP client for connecting to any MCP server."""
+"""Generic MCP client for connecting to any MCP server (local or remote)."""
 
 import json
 import logging
@@ -11,22 +11,55 @@ logger = logging.getLogger(__name__)
 
 
 class GenericMCPClient:
-    """Client for calling tools on any MCP server."""
+    """Client for calling tools on any MCP server.
 
-    def __init__(self, name: str, command: str, args: list[str] = None, env: dict = None):
+    Supports:
+    - Local (stdio): subprocess-based MCP servers
+    - Remote (SSE): Server-Sent Events at a URL
+    - Remote (streamable_http): HTTP streaming at a URL
+    """
+
+    def __init__(self, name: str, transport: str = "stdio",
+                 command: str = None, args: list[str] = None, env: dict = None,
+                 url: str = None, headers: dict = None):
         self.name = name
+        self.transport = transport
         self._command = command
         self._args = args or []
         self._env = env
+        self._url = url
+        self._headers = headers
         self._session: ClientSession | None = None
         self._context = None
         self._tools: list[dict] = []
 
     async def start(self):
-        """Start the MCP server subprocess and connect."""
+        """Start the MCP server and connect."""
+        if self.transport == "stdio":
+            await self._start_stdio()
+        elif self.transport == "sse":
+            await self._start_sse()
+        elif self.transport == "streamable_http":
+            await self._start_streamable_http()
+        else:
+            raise ValueError(f"Unknown transport: {self.transport}")
+
+        # Discover available tools
+        tools_result = await self._session.list_tools()
+        self._tools = []
+        for tool in tools_result.tools:
+            self._tools.append({
+                "name": tool.name,
+                "description": tool.description or "",
+                "parameters": tool.inputSchema if hasattr(tool, 'inputSchema') else {},
+            })
+
+        logger.info(f"MCP '{self.name}' started ({self.transport}): {len(self._tools)} tools")
+
+    async def _start_stdio(self):
+        """Start a local MCP server via stdio."""
         import os
-        
-        # Merge env with current process env
+
         merged_env = {**os.environ}
         if self._env:
             merged_env.update(self._env)
@@ -43,17 +76,32 @@ class GenericMCPClient:
         await self._session.__aenter__()
         await self._session.initialize()
 
-        # Discover available tools
-        tools_result = await self._session.list_tools()
-        self._tools = []
-        for tool in tools_result.tools:
-            self._tools.append({
-                "name": tool.name,
-                "description": tool.description or "",
-                "parameters": tool.inputSchema if hasattr(tool, 'inputSchema') else {},
-            })
+    async def _start_sse(self):
+        """Connect to a remote MCP server via SSE."""
+        from mcp.client.sse import sse_client
 
-        logger.info(f"MCP server '{self.name}' started: {len(self._tools)} tools")
+        self._context = sse_client(
+            url=self._url,
+            headers=self._headers,
+        )
+        read_stream, write_stream = await self._context.__aenter__()
+        self._session = ClientSession(read_stream, write_stream)
+        await self._session.__aenter__()
+        await self._session.initialize()
+
+    async def _start_streamable_http(self):
+        """Connect to a remote MCP server via streamable HTTP."""
+        from mcp.client.streamable_http import streamablehttp_client
+
+        self._context = streamablehttp_client(
+            url=self._url,
+            headers=self._headers,
+        )
+        result = await self._context.__aenter__()
+        read_stream, write_stream = result[0], result[1]
+        self._session = ClientSession(read_stream, write_stream)
+        await self._session.__aenter__()
+        await self._session.initialize()
 
     @property
     def tools(self) -> list[dict]:
@@ -67,7 +115,6 @@ class GenericMCPClient:
 
         result = await self._session.call_tool(name, arguments)
         if result.content:
-            # Handle multiple content items
             parts = []
             for item in result.content:
                 if hasattr(item, 'text'):
@@ -93,4 +140,4 @@ class GenericMCPClient:
                 await self._context.__aexit__(None, None, None)
             except Exception:
                 pass
-        logger.info(f"MCP server '{self.name}' shut down")
+        logger.info(f"MCP '{self.name}' shut down")

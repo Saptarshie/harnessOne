@@ -1,33 +1,61 @@
 # Global MCP servers — available in ALL projects
 # Local .harness/config.yaml can override or add project-specific servers
-# Format: same as mcp_servers in config.yaml
+#
+# Format (opencode-compatible):
+#   local (stdio):
+#     - name: server-name
+#       type: local
+#       command: npx
+#       args: ["-y", "package"]
+#
+#   remote (SSE):
+#     - name: server-name
+#       type: remote
+#       url: https://mcp.example.com/mcp
+#       headers: {Authorization: "Bearer ${TOKEN}"}
 
 mcp_servers:
-  # Filesystem — access files in current project directory
+  # ── Local (stdio) ─────────────────────────────
+
+  # Filesystem — access files in project directory
   - name: filesystem
+    type: local
     command: npx
     args: ["-y", "@modelcontextprotocol/server-filesystem", "."]
 
-  # Context7 — up-to-date library documentation
+  # Context7 — up-to-date library documentation (local)
   - name: context7
+    type: local
     command: npx
     args: ["-y", "@upstash/context7-mcp"]
 
-  # GitHub — repo management, issues, PRs (needs GITHUB_TOKEN env)
+  # PDF tools
+  # - name: pdf
+  #   type: local
+  #   command: uvx
+  #   args: ["mcp-server-pdf"]
+
+  # ── Remote (SSE) ──────────────────────────────
+
+  # Context7 — remote (uncomment to use instead of local)
+  # - name: context7-remote
+  #   type: remote
+  #   url: https://mcp.context7.com/mcp
+
+  # ── Disabled by default ───────────────────────
+
+  # GitHub (needs GITHUB_TOKEN env)
   # - name: github
+  #   type: local
   #   command: npx
   #   args: ["-y", "@modelcontextprotocol/server-github"]
   #   env:
   #     GITHUB_PERSONAL_ACCESS_TOKEN: "${GITHUB_TOKEN}"
 
-  # Brave Search — web search (needs BRAVE_API_KEY env)
+  # Brave Search (needs BRAVE_API_KEY env)
   # - name: brave-search
+  #   type: local
   #   command: npx
   #   args: ["-y", "@modelcontextprotocol/server-brave-search"]
   #   env:
   #     BRAVE_API_KEY: "${BRAVE_API_KEY}"
-
-  # PDF tools
-  # - name: pdf
-  #   command: uvx
-  #   args: ["mcp-server-pdf"]
