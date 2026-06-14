@@ -304,6 +304,10 @@ def main():
                             "/skills    - List skills\n"
                             "/tools     - List tools\n"
                             "/mcp       - List MCP servers\n"
+                            "/improve   - Show prompt optimization report\n"
+                            "/memory    - Show global memory stats\n"
+                            "/scratch   - Show scratchpad contents\n"
+                            "/stats     - Show session statistics\n"
                             "/clear     - Clear screen\n"
                             "/exit      - Save and exit",
                             title="Commands",
@@ -316,6 +320,43 @@ def main():
                         skills = await harness.list_skills()
                         for s in skills:
                             console.print(f"  {s['name']}: {s.get('description', '')}")
+                    elif cmd == "/improve":
+                        report = harness.get_improvement_report()
+                        if report["total_metrics"] == 0:
+                            console.print("[dim]No metrics recorded yet.[/dim]")
+                        else:
+                            table = Table(title="Prompt Optimization", box=box.ROUNDED)
+                            table.add_column("Prompt ID", style="cyan")
+                            table.add_column("Score", justify="right")
+                            table.add_column("Samples", justify="right")
+                            for p in report["prompts"]:
+                                table.add_row(p["prompt_id"], f"{p['score']:.3f}", str(p["samples"]))
+                            console.print(table)
+                            console.print(f"[dim]Total metrics: {report['total_metrics']}[/dim]")
+                    elif cmd == "/memory":
+                        stats = harness.get_memory_stats()
+                        if stats["total_entries"] == 0:
+                            console.print("[dim]No memory entries.[/dim]")
+                        else:
+                            console.print(f"[cyan]Total entries:[/cyan] {stats['total_entries']}")
+                            for cat, count in stats["categories"].items():
+                                console.print(f"  {cat}: {count}")
+                    elif cmd == "/scratch":
+                        if not harness._scratchpad:
+                            console.print("[dim]Scratchpad disabled.[/dim]")
+                        else:
+                            entries = harness._scratchpad.list_entries()
+                            if not entries:
+                                console.print("[dim]Scratchpad empty.[/dim]")
+                            else:
+                                for e in entries:
+                                    console.print(f"  [cyan]{e.label}[/cyan] (p{e.priority}): {e.content}")
+                    elif cmd == "/stats":
+                        tokens = harness._chat_engine.context_tokens if harness._chat_engine else 0
+                        msgs = len(harness._session.messages) if harness._session else 0
+                        console.print(f"[cyan]Session:[/cyan] {harness._session.id if harness._session else 'none'}")
+                        console.print(f"[cyan]Messages:[/cyan] {msgs}")
+                        console.print(f"[cyan]Context tokens:[/cyan] {tokens}")
                     elif cmd == "/clear":
                         console.clear()
                     else:
