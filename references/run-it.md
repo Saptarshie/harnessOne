@@ -112,3 +112,33 @@ mcp_servers:
    list_directory -- Get detailed listing... [mcp:filesystem]
    search_files -- Recursively search for files... [mcp:filesystem]
    ...14 tools total
+
+---
+
+Fixed — CLI Entry Point
+The harness command now works from any directory.
+How to Use
+
+# From any directory:
+
+harness # Start interactive session
+harness --sessions # List sessions
+harness --skills # List skills
+harness --tools # List tools
+harness --mcp # List MCP servers
+harness --init # Initialize .harness/ workspace
+harness --resume <id> # Resume session
+What Changed
+
+1. Created src/harness/cli_main.py — CLI entry point inside the package
+2. Updated pyproject.toml — entry point now harness.cli_main:main
+3. Reinstalled package — pip install -e .
+   Test
+   PS D:\prac_prog\fun\hernessOne\test\workspace-1> harness --sessions
+   Sessions  
+   ┌──────────┬─────────────────────────────────────┬──────┬─────────────────────┐
+   │ ID │ Title │ Msgs │ Last Active │
+   ├──────────┼─────────────────────────────────────┼──────┼─────────────────────┤
+   │ 407423b2 │ do research and explain me how │ 14 │ 2026-06-14 11:33 │
+   │ bbce2f9a │ Hi , list all the tools and mcps │ 69 │ 2026-06-14 11:19 │
+   └──────────┴─────────────────────────────────────┴──────┴─────────────────────┘

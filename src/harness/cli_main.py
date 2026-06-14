@@ -325,9 +325,9 @@ def main():
                 # Send message with streaming
                 response_text = ""
 
-                def on_stream(delta, is_done, usage):
+                async def on_stream(delta, is_done, usage):
                     nonlocal response_text
-                    if not is_done:
+                    if not is_done and delta:
                         response_text += delta
                         # Print streaming text
                         print(delta, end="", flush=True)
