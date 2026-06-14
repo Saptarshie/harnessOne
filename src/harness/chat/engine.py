@@ -65,7 +65,7 @@ class ChatEngine:
 
                 for tc in response.tool_calls:
                     try:
-                        result = self._tools.execute(tc.name, tc.arguments)
+                        result = await self._tools.execute_async(tc.name, tc.arguments)
                     except Exception as e:
                         result = f"Error: {e}"
                     self._session.add_tool_result(tc.id, result, name=tc.name)

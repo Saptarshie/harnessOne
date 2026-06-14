@@ -37,7 +37,10 @@ skills:
   paths: ["skills/"]
   auto_load: true
 
-mcp_servers: []
+mcp_servers:
+  - name: filesystem
+    command: npx
+    args: ["-y", "@modelcontextprotocol/server-filesystem", "."]
 
 tools:
   enabled: [file_ops, shell, git, search, web]

@@ -116,7 +116,41 @@ skills:
     - "{harness_root}/skills/"
   auto_load: true
 
-mcp_servers: []
+mcp_servers:
+  # Example: Filesystem access
+  # - name: filesystem
+  #   command: npx
+  #   args: ["-y", "@modelcontextprotocol/server-filesystem", "."]
+  #
+  # Example: GitHub
+  # - name: github
+  #   command: npx
+  #   args: ["-y", "@modelcontextprotocol/server-github"]
+  #   env:
+  #     GITHUB_PERSONAL_ACCESS_TOKEN: "${GITHUB_TOKEN}"
+  #
+  # Example: Brave Search
+  # - name: brave-search
+  #   command: npx
+  #   args: ["-y", "@modelcontextprotocol/server-brave-search"]
+  #   env:
+  #     BRAVE_API_KEY: "${BRAVE_API_KEY}"
+  #
+  # Example: Context7 (library docs)
+  # - name: context7
+  #   command: npx
+  #   args: ["-y", "@upstash/context7-mcp"]
+  #
+  # Example: PDF tools
+  # - name: pdf
+  #   command: uvx
+  #   args: ["mcp-server-pdf"]
+  #
+  # Example: Custom Python MCP server
+  # - name: my-server
+  #   command: python
+  #   args: ["path/to/my_mcp_server.py"]
+  []
 
 tools:
   enabled: [file_ops, shell, git, search, web]
@@ -300,7 +334,7 @@ def show_help():
   {C.CYAN}/resume <id>{C.RESET}      Resume a session
   {C.CYAN}/new{C.RESET}              Start a new session
   {C.CYAN}/skills{C.RESET}           List available skills
-  {C.CYAN}/tools{C.RESET}            List available tools
+  {C.CYAN}/tools{C.RESET}            List available tools (including MCP)
   {C.CYAN}/history{C.RESET}          Show conversation history
   {C.CYAN}/clear{C.RESET}            Clear current session
   {C.CYAN}/save{C.RESET}             Save current session
@@ -423,8 +457,17 @@ class HarnessTUI:
             show_skills(skills)
 
         elif cmd == "/tools":
+            # Show built-in tools
             tools = self._harness._tool_registry.get_all_tools()
             show_tools(tools)
+            # Show MCP tools if any
+            mcp_tools = await self._harness.list_mcp_tools()
+            if mcp_tools:
+                print(f"{C.BOLD}MCP Tools:{C.RESET}")
+                for t in mcp_tools:
+                    source = t.get("source", "mcp")
+                    print(f"  {C.MAGENTA}{t['name']}{C.RESET} -- {t['description'][:60]} {C.DIM}[{source}]{C.RESET}")
+                print()
 
         elif cmd == "/history":
             session = self._harness._session
@@ -487,6 +530,16 @@ Examples:
   harness --api                    Start REST API server
   harness --init                   Initialize .harness/ workspace
 
+MCP Servers:
+  Add MCP servers to .harness/config.yaml under mcp_servers:
+    mcp_servers:
+      - name: filesystem
+        command: npx
+        args: ["-y", "@modelcontextprotocol/server-filesystem", "."]
+      - name: context7
+        command: npx
+        args: ["-y", "@upstash/context7-mcp"]
+
 Workspace:
   Creates .harness/ in the current directory for:
     - sessions/    Session history (JSON)
@@ -500,6 +553,7 @@ Workspace:
     parser.add_argument("--sessions", action="store_true", help="List all sessions and exit")
     parser.add_argument("--skills", action="store_true", help="List available skills and exit")
     parser.add_argument("--tools", action="store_true", help="List available tools and exit")
+    parser.add_argument("--mcp", action="store_true", help="List connected MCP servers and tools")
     parser.add_argument("--api", action="store_true", help="Start REST API server")
     parser.add_argument("--host", default="0.0.0.0", help="API host (default: 0.0.0.0)")
     parser.add_argument("--port", type=int, default=8000, help="API port (default: 8000)")
@@ -579,6 +633,20 @@ def main():
         harness._register_builtin_tools()
         tools = harness._tool_registry.get_all_tools()
         show_tools(tools)
+        return
+
+    if args.mcp:
+        harness._register_builtin_tools()
+        asyncio.run(harness._start_mcp_servers())
+        mcp_tools = asyncio.run(harness.list_mcp_tools())
+        if mcp_tools:
+            print(f"\n{C.BOLD}MCP Servers & Tools:{C.RESET}")
+            for t in mcp_tools:
+                source = t.get("source", "mcp")
+                print(f"  {C.MAGENTA}{t['name']}{C.RESET} -- {t['description'][:60]} {C.DIM}[{source}]{C.RESET}")
+            print()
+        else:
+            print(f"\n{C.DIM}No MCP servers configured. Edit .harness/config.yaml to add them.{C.RESET}\n")
         return
 
     # Startup for interactive/API modes

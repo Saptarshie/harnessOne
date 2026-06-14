@@ -39,7 +39,10 @@ skills:
     - "D:/prac_prog/fun/hernessOne/harnssOne-1/skills/"
   auto_load: true
 
-mcp_servers: []
+mcp_servers:
+  - name: filesystem
+    command: npx
+    args: ["-y", "@modelcontextprotocol/server-filesystem", "."]
 
 tools:
   enabled: [file_ops, shell, git, search, web]

@@ -1,5 +1,6 @@
 """Central tool registry for built-in and MCP tools."""
 
+import asyncio
 import logging
 from typing import Callable
 from dataclasses import dataclass
@@ -59,12 +60,30 @@ class ToolRegistry:
         return "\n".join(lines)
 
     def execute(self, name: str, parameters: dict) -> str:
-        """Execute a tool by name."""
+        """Execute a tool by name (handles both sync and async handlers)."""
         tool = self._tools.get(name)
         if not tool:
             raise ValueError(f"Unknown tool: {name}")
         try:
             result = tool.handler(parameters)
+            # Handle async handlers
+            if asyncio.iscoroutine(result):
+                result = asyncio.get_event_loop().run_until_complete(result)
+            return str(result) if result is not None else "Success"
+        except Exception as e:
+            logger.error(f"Tool {name} failed: {e}")
+            return f"Error: {e}"
+
+    async def execute_async(self, name: str, parameters: dict) -> str:
+        """Execute a tool by name (async version for MCP tools)."""
+        tool = self._tools.get(name)
+        if not tool:
+            raise ValueError(f"Unknown tool: {name}")
+        try:
+            result = tool.handler(parameters)
+            # Handle async handlers
+            if asyncio.iscoroutine(result):
+                result = await result
             return str(result) if result is not None else "Success"
         except Exception as e:
             logger.error(f"Tool {name} failed: {e}")
