@@ -23,6 +23,29 @@ class Orchestrator:
         self.llm = LLMClient(config)
         self.available_nodes = get_registered_nodes()
         self._node_instances: dict[str, BaseNode] = {}
+        self._mcp_client = None
+
+    async def start_mcp_client(self):
+        """Start the MCP client for memory operations."""
+        if self.config.vault_path:
+            from harness.memory.mcp_client import MCPClient
+            self._mcp_client = MCPClient(
+                server_path=self.config.mcp_server_path,
+                vault_path=self.config.vault_path,
+                embedding_model=self.config.embedding_model,
+            )
+            try:
+                await self._mcp_client.start()
+                logger.info("MCP client started")
+            except Exception as e:
+                logger.warning(f"Failed to start MCP client: {e}")
+                self._mcp_client = None
+
+    async def shutdown_mcp_client(self):
+        """Shut down the MCP client."""
+        if self._mcp_client:
+            await self._mcp_client.shutdown()
+            self._mcp_client = None
 
     def _get_node(self, name: str) -> BaseNode:
         """Get or create a plugin node instance."""
@@ -48,11 +71,21 @@ class Orchestrator:
         import harness.plugins.compactor  # noqa: F401
         import harness.plugins.context_manager  # noqa: F401
 
+        # Import memory plugins (v2)
+        has_memory = False
+        if self._mcp_client:
+            try:
+                import harness.plugins.memory_query  # noqa: F401
+                import harness.plugins.memory_writer_node  # noqa: F401
+                has_memory = True
+            except ImportError:
+                pass
+
         self.available_nodes = get_registered_nodes()
 
         graph = StateGraph(HarnessState)
 
-        # Add nodes
+        # Add core nodes
         thinker = self._make_node_wrapper("thinker")
         stuck_detector = self._make_node_wrapper("stuck_detector")
         sub_agent_spawner = self._make_node_wrapper("sub_agent_spawner")
@@ -65,8 +98,26 @@ class Orchestrator:
         graph.add_node("compactor", compactor)
         graph.add_node("context_manager", context_manager)
 
+        # Add memory nodes if MCP client available
+        if has_memory:
+            memory_query = self._make_memory_node("memory_query")
+            memory_writer = self._make_memory_node("memory_writer")
+            graph.add_node("memory_query", memory_query)
+            graph.add_node("memory_writer", memory_writer)
+
+            # Wire: START -> memory_query -> thinker
+            graph.set_entry_point("memory_query")
+            graph.add_edge("memory_query", "thinker")
+
+            # Wire: compactor -> memory_writer -> context_manager
+            graph.add_edge("compactor", "memory_writer")
+            graph.add_edge("memory_writer", "context_manager")
+        else:
+            # Original flow without memory
+            graph.set_entry_point("thinker")
+            graph.add_edge("compactor", "context_manager")
+
         # Edges
-        graph.set_entry_point("thinker")
         graph.add_edge("thinker", "stuck_detector")
 
         # Conditional: stuck or not stuck
@@ -80,7 +131,6 @@ class Orchestrator:
         )
 
         graph.add_edge("sub_agent_spawner", "compactor")
-        graph.add_edge("compactor", "context_manager")
 
         # Conditional: loop or finish
         graph.add_conditional_edges(
@@ -97,6 +147,19 @@ class Orchestrator:
     def _make_node_wrapper(self, name: str):
         """Create an async function wrapper for a plugin node."""
         node = self._get_node(name)
+        llm = self.llm
+
+        async def wrapper(state: HarnessState) -> HarnessState:
+            return await node.process(state, llm)
+
+        return wrapper
+
+    def _make_memory_node(self, name: str):
+        """Create an async function wrapper for a memory plugin node."""
+        cls = self.available_nodes.get(name)
+        if cls is None:
+            raise ValueError(f"Memory plugin '{name}' not registered")
+        node = cls(mcp_client=self._mcp_client)
         llm = self.llm
 
         async def wrapper(state: HarnessState) -> HarnessState:
