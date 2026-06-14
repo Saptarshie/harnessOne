@@ -119,15 +119,17 @@ skills:
 mcp_servers:
   # Global MCP servers are loaded from config/global-mcp.yaml
   # Add project-specific servers here (same name overrides global)
-  # Example: Filesystem access
+  #
+  # Local (stdio):
   # - name: filesystem
+  #   type: local
   #   command: npx
   #   args: ["-y", "@modelcontextprotocol/server-filesystem", "."]
   #
-  # Example: Context7 (library docs)
+  # Remote (streamable_http):
   # - name: context7
-  #   command: npx
-  #   args: ["-y", "@upstash/context7-mcp"]
+  #   type: streamable_http
+  #   url: https://mcp.context7.com/mcp
   []
 
 tools:

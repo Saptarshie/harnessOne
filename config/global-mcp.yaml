@@ -39,7 +39,7 @@ mcp_servers:
 
   # Context7 — remote (uncomment to use instead of local)
   # - name: context7-remote
-  #   type: remote
+  #   type: streamable_http
   #   url: https://mcp.context7.com/mcp
 
   # ── Disabled by default ───────────────────────
