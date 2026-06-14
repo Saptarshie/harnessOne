@@ -1,0 +1,42 @@
++ Thought: 513ms
+# Todos
+[✓] Task 0: Project Setup
+[✓] Task 1: Config Module
+[✓] Task 2: LLM Client
+[✓] Task 3: State Definition
+[✓] Task 4: Plugin System
+[✓] Task 5: Trace Logger
+[✓] Tasks 6-10: All Plugins
+[✓] Task 11: Orchestrator + Entry Point
+[✓] Task 12: Smoke Test
+[✓] Final review of entire implementation
++ Thought: 103ms
+v1 Implementation Complete
+40 tests passing, 5 commits, full TDD cycle.
+What was built:
+src/harness/
+├── __init__.py              # CognitiveHarness entry point
+├── config.py                # YAML config loader with env var resolution
+├── state.py                 # HarnessState TypedDict
+├── orchestrator.py          # LangGraph graph builder + plugin orchestrator
+├── llm/client.py            # LiteLLM wrapper with retry + token counting
+├── plugins/
+│   ├── base.py              # BaseNode ABC
+│   ├── __init__.py          # @register_node decorator registry
+│   ├── thinker.py           # Main LLM reasoning node
+│   ├── stuck_detector.py    # Hedging + repetition detection
+│   ├── sub_agent_spawner.py # Parallel async sub-agent forking
+│   ├── compactor.py         # Lean-style proof compaction
+│   └── context_manager.py   # Two-tier context window management
+└── logging/trace_logger.py  # Structured JSONL execution traces
+Core flow:
+invoke("prompt") → thinker → stuck? → [sub_agents → compactor] → context_manage → loop/finish
+Key design decisions:
+- Plugin architecture: @register_node("name") decorator for extensibility
+- Two-tier compaction: Working buffer → checkpoint (Tier 1), all checkpoints → single derivation (Tier 2)
+- Checkpoint accumulation: A + B' + C' + ... (never re-compact checkpoints)
+- Single entry point: harness.invoke(prompt) -> response hides all machinery
+What's deferred to v2/v3:
+- Obsidian MCP memory (graph queries, derivation trees)
+- DSPy/EGPA self-improvement
+- Global memory & scratchpad
