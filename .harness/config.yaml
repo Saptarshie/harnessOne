@@ -1,0 +1,56 @@
+llm:
+  model: "openai/deepseek-v4-flash"
+  api_base: "https://opencode.ai/zen/go/v1"
+  api_key_env: "OPENAI_API_KEY"
+  max_tokens: 4096
+  temperature: 0.7
+
+harness:
+  max_iterations: 5
+  sub_agent_count: 3
+  sub_agent_max_iterations: 3
+  working_buffer_compact_threshold: 4000
+  full_compaction_threshold: 12000
+  stuck_detector: "heuristic"
+
+logging:
+  level: "INFO"
+  jsonl_path: ".harness/logs/traces.jsonl"
+  enable_thought_tracking: true
+
+memory:
+  vault_path: ".harness/vault"
+  embedding_model: "Qwen/Qwen3-Embedding-0.6B"
+  embedding_device: "cpu"
+  embedding_quantize: true
+  top_k: 5
+  keyword_weight: 0.4
+  embedding_weight: 0.6
+  mcp_server_path: "D:/prac_prog/fun/hernessOne/harnssOne-1/mcp_server/server.py"
+
+session:
+  storage_path: ".harness/sessions"
+  auto_save: true
+  max_history_tokens: 100000
+
+skills:
+  paths:
+    - ".harness/skills/"
+    - "D:/prac_prog/fun/hernessOne/harnssOne-1/skills/"
+  auto_load: true
+
+mcp_servers: []
+
+tools:
+  enabled: [file_ops, shell, git, search, web]
+  shell:
+    allowed_commands: []
+    blocked_commands: ["rm -rf /", "format", "del /f /s /q"]
+  file_ops:
+    allowed_paths: ["."]
+    blocked_paths: ["~/.ssh", "~/.env"]
+
+api:
+  enabled: false
+  host: "0.0.0.0"
+  port: 8000

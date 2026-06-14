@@ -27,6 +27,9 @@ dev = [
     "pytest-mock>=3.12",
 ]
 
+[project.scripts]
+harness = "harness_cli:main"
+
 [tool.setuptools.packages.find]
 where = ["src"]
 
