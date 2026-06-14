@@ -107,8 +107,8 @@ class CognitiveHarness:
 
     def _make_mcp_handler(self, tool_name: str):
         """Create a handler function for an MCP tool."""
-        async def handler(**kwargs):
-            return await self._mcp_manager.call_tool(tool_name, kwargs)
+        async def handler(params):
+            return await self._mcp_manager.call_tool(tool_name, params)
         return handler
 
     async def start_session(self, session_id: str = None) -> str:

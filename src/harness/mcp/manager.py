@@ -172,6 +172,6 @@ class MCPManager:
         for name, client in self._clients.items():
             try:
                 await client.shutdown()
-            except Exception:
-                pass
+            except Exception as e:
+                logger.debug(f"Error stopping MCP '{name}': {e}")
         self._clients.clear()

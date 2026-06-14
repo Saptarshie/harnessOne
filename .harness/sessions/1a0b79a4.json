@@ -1,0 +1,101 @@
+{
+  "id": "1a0b79a4",
+  "created": "2026-06-14T07:15:48.159342+00:00",
+  "last_active": "2026-06-14T07:16:10.571806+00:00",
+  "title": "what is react hooks? use context7",
+  "messages": [
+    {
+      "role": "user",
+      "content": "what is react hooks? use context7"
+    },
+    {
+      "role": "assistant",
+      "content": "",
+      "tool_calls": [
+        {
+          "id": "call_00_g8DcfMzNmxhmUFiW1J9H4012",
+          "type": "function",
+          "function": {
+            "name": "resolve-library-id",
+            "arguments": "{\"query\": \"What are React Hooks? Explain useState, useEffect, and other hooks\", \"libraryName\": \"React\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "Error: CognitiveHarness._make_mcp_handler.<locals>.handler() takes 0 positional arguments but 1 was given",
+      "tool_call_id": "call_00_g8DcfMzNmxhmUFiW1J9H4012",
+      "name": "resolve-library-id",
+      "type": "tool_result"
+    },
+    {
+      "role": "assistant",
+      "content": "",
+      "tool_calls": [
+        {
+          "id": "call_00_HZ6bHxA6m6I2oQwrS2e70101",
+          "type": "function",
+          "function": {
+            "name": "resolve-library-id",
+            "arguments": "{\"query\": \"What are React Hooks? Explain useState, useEffect, and other hooks\", \"libraryName\": \"React\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "Error: CognitiveHarness._make_mcp_handler.<locals>.handler() takes 0 positional arguments but 1 was given",
+      "tool_call_id": "call_00_HZ6bHxA6m6I2oQwrS2e70101",
+      "name": "resolve-library-id",
+      "type": "tool_result"
+    },
+    {
+      "role": "assistant",
+      "content": "",
+      "tool_calls": [
+        {
+          "id": "call_00_TFyY0elbsspnbW0LVN882810",
+          "type": "function",
+          "function": {
+            "name": "resolve-library-id",
+            "arguments": "{\"query\": \"What are React Hooks\", \"libraryName\": \"react\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "Error: CognitiveHarness._make_mcp_handler.<locals>.handler() takes 0 positional arguments but 1 was given",
+      "tool_call_id": "call_00_TFyY0elbsspnbW0LVN882810",
+      "name": "resolve-library-id",
+      "type": "tool_result"
+    },
+    {
+      "role": "assistant",
+      "content": "",
+      "tool_calls": [
+        {
+          "id": "call_00_bhGvk2fURo1np8S3nIK27860",
+          "type": "function",
+          "function": {
+            "name": "query-docs",
+            "arguments": "{\"libraryId\": \"/facebook/react\", \"query\": \"What are React Hooks? Explain useState, useEffect, useRef, useCallback, useMemo\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "Error: CognitiveHarness._make_mcp_handler.<locals>.handler() takes 0 positional arguments but 1 was given",
+      "tool_call_id": "call_00_bhGvk2fURo1np8S3nIK27860",
+      "name": "query-docs",
+      "type": "tool_result"
+    },
+    {
+      "role": "assistant",
+      "content": "Unfortunately, the Context7 tools are currently experiencing an internal technical error (the handler is not accepting arguments properly), so I'm unable to fetch the documentation directly from Context7 right now. However, I can still give you a comprehensive answer about React Hooks based on my knowledge!\n\n---\n\n## What are React Hooks?\n\n**React Hooks** are functions introduced in **React 16.8** (2019) that let you use state and other React features in functional components without writing a class. Before hooks, state and lifecycle methods were only available in class components.\n\n### Why Hooks?\n- \u2705 Reuse stateful logic between components without complex patterns (render props, HOCs)\n- \u2705 Break components into smaller, focused functions\n- \u2705 Use state in functional components (no more `this` binding!)\n- \u2705 Better code organization by related logic, not lifecycle methods\n\n---\n\n### The Most Common Built-in Hooks\n\n#### 1\ufe0f\u20e3 `useState` \u2014 State Management\n```jsx\nimport { useState } from 'react';\n\nfunction Counter() {\n  const [count, setCount] = useState(0); // [value, setter]\n\n  return (\n    <div>\n      <p>You clicked {count} times</p>\n      <button onClick={() => setCount(count + 1)}>+</button>\n    </div>\n  );\n}\n```\n\n#### 2\ufe0f\u20e3 `useEffect` \u2014 Side Effects (lifecycle replacement)\n```jsx\nimport { useState, useEffect } from 'react';\n\nfunction User({ userId }) {\n  const [user, setUser] = useState(null);\n\n  // Runs after every render by default\n  useEffect(() => {\n    fetch(`/api/users/${userId}`)\n      .then(res => res.json())\n      .then(data => setUser(data));\n\n    // Optional cleanup function (componentWillUnmount)\n    return () => console.log('Cleanup!');\n  }, [userId]); // Only re-run when `userId` changes\n}\n```\n\n#### 3\ufe0f\u20e3 `useRef` \u2014 Mutable References\n```jsx\nfunction AutoFocus() {\n  const inputRef = useRef(null);\n\n  useEffect(() => {\n    inputRef.current.focus(); // Direct DOM access\n  }, []);\n\n  return <input ref={inputRef} />;\n}\n```\n\n#### 4\ufe0f\u20e3 `useMemo` \u2014 Memoized Values\n```jsx\nconst expensiveValue = useMemo(() => {\n  return computeExpensiveValue(a, b);\n}, [a, b]); // Only recomputes when a or b change\n```\n\n#### 5\ufe0f\u20e3 `useCallback` \u2014 Memoized Functions\n```jsx\nconst memoizedCallback = useCallback(() => {\n  doSomething(a, b);\n}, [a, b]);\n```\n\n#### 6\ufe0f\u20e3 `useContext` \u2014 Consume Context\n```jsx\nconst theme = useContext(ThemeContext); // No more <ThemeContext.Consumer>\n```\n\n#### 7\ufe0f\u20e3 `useReducer` \u2014 Complex State Logic\n```jsx\nconst [state, dispatch] = useReducer(reducer, initialState);\n// Like Redux, but built-in!\n```\n\n---\n\n### Rules of Hooks\n1. **Only call hooks at the top level** (not inside loops, conditions, or nested functions)\n2. **Only call hooks from React function components or custom hooks**\n\n### Custom Hooks\nYou can create your own hooks to extract reusable logic:\n```jsx\nfunction useWindowWidth() {\n  const [width, setWidth] = useState(window.innerWidth);\n  \n  useEffect(() => {\n    const handleResize = () => setWidth(window.innerWidth);\n    window.addEventListener('resize', handleResize);\n    return () => window.removeEventListener('resize', handleResize);\n  }, []);\n\n  return width;\n}\n```\n\n---\n\nWould you like me to elaborate on any specific hook or dive deeper into custom hooks, performance optimization, or patterns? In the meantime, the Context7 issue seems to be a transient server-side error \u2014 you could try again later for official docs!"
+    }
+  ],
+  "metadata": {}
+}
