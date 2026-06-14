@@ -1,0 +1,32 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "cognitive-harness"
+version = "0.1.0"
+description = "Plugin-based LLM reasoning harness with dynamic thinking"
+requires-python = ">=3.11"
+dependencies = [
+    "litellm>=1.40.0",
+    "langgraph>=0.2.0",
+    "pyyaml>=6.0",
+    "tiktoken>=0.7.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "pytest-asyncio>=0.23",
+    "pytest-mock>=3.12",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+markers = [
+    "integration: marks tests as integration tests (require real LLM)",
+]
