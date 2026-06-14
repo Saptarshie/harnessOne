@@ -29,7 +29,7 @@ dev = [
 ]
 
 [project.scripts]
-harness = "harness_cli:main"
+harness = "harness.cli_main:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
