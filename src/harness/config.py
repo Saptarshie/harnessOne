@@ -1,7 +1,7 @@
 """Configuration loading and validation."""
 
 import os
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 
 import yaml
@@ -41,6 +41,26 @@ class HarnessConfig:
     keyword_weight: float = 0.4
     embedding_weight: float = 0.6
     mcp_server_path: str = "mcp_server/server.py"
+
+    # Session settings (v3)
+    session_storage_path: str = "sessions"
+    session_auto_save: bool = True
+    session_max_history_tokens: int = 100000
+
+    # Skills settings (v3)
+    skills_paths: list[str] = field(default_factory=lambda: ["skills/"])
+    skills_auto_load: bool = True
+
+    # MCP servers (v3)
+    mcp_servers: list[dict] = field(default_factory=list)
+
+    # Tools settings (v3)
+    tools_enabled: list[str] = field(default_factory=lambda: ["file_ops", "shell", "git", "search", "web"])
+
+    # API settings (v3)
+    api_enabled: bool = False
+    api_host: str = "0.0.0.0"
+    api_port: int = 8000
 
 
 def load_config(config_path: str) -> HarnessConfig:
@@ -112,6 +132,11 @@ def load_config(config_path: str) -> HarnessConfig:
     embedding_weight = memory.get("embedding_weight", 0.6)
     mcp_server_path = memory.get("mcp_server_path", "mcp_server/server.py")
 
+    session = raw.get("session", {})
+    skills = raw.get("skills", {})
+    tools = raw.get("tools", {})
+    api = raw.get("api", {})
+
     return HarnessConfig(
         model=model,
         api_base=api_base,
@@ -135,4 +160,14 @@ def load_config(config_path: str) -> HarnessConfig:
         keyword_weight=keyword_weight,
         embedding_weight=embedding_weight,
         mcp_server_path=mcp_server_path,
+        session_storage_path=session.get("storage_path", "sessions"),
+        session_auto_save=session.get("auto_save", True),
+        session_max_history_tokens=session.get("max_history_tokens", 100000),
+        skills_paths=skills.get("paths", ["skills/"]),
+        skills_auto_load=skills.get("auto_load", True),
+        mcp_servers=raw.get("mcp_servers", []),
+        tools_enabled=tools.get("enabled", ["file_ops", "shell", "git", "search", "web"]),
+        api_enabled=api.get("enabled", False),
+        api_host=api.get("host", "0.0.0.0"),
+        api_port=api.get("port", 8000),
     )

@@ -27,3 +27,28 @@ memory:
   keyword_weight: 0.4
   embedding_weight: 0.6
   mcp_server_path: "mcp_server/server.py"
+
+session:
+  storage_path: "sessions"
+  auto_save: true
+  max_history_tokens: 100000
+
+skills:
+  paths: ["skills/"]
+  auto_load: true
+
+mcp_servers: []
+
+tools:
+  enabled: [file_ops, shell, git, search, web]
+  shell:
+    allowed_commands: []
+    blocked_commands: ["rm -rf /", "format"]
+  file_ops:
+    allowed_paths: ["."]
+    blocked_paths: ["~/.ssh", "~/.env"]
+
+api:
+  enabled: false
+  host: "0.0.0.0"
+  port: 8000

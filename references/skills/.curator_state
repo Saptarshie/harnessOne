@@ -1,0 +1,9 @@
+{
+  "last_report_path": "/home/saptarshi/.hermes/logs/curator/20260601-174438",
+  "last_run_at": "2026-06-01T17:44:38.725378+00:00",
+  "last_run_duration_seconds": 421.324501,
+  "last_run_summary": "auto: no changes; llm: ---\n\n## Consolidation Pass Complete\n\n### Summary\n\n**Processed 5 agent-created skills. Identified 1 cluster (PDF generation). 2 archives, 0 prunings, 2 kept standalone.**\n\n#### PDF Cluster (3 → 1)\n\nThe `pdf-book-generator` / `pdf-book-genera…\narchived 2 skill(s):\n  • pdf-book-generation → pdf-book-generator\n  • pdf-generation → pdf-book-generator\nfull report: hermes curator status\nkeep an umbrella stable: hermes curator pin pdf-book-generator",
+  "last_run_summary_shown_at": "2026-05-25T16:52:29.735404+00:00",
+  "paused": false,
+  "run_count": 1
+}
