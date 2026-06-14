@@ -58,13 +58,17 @@ class GlobalMemory:
     ):
         """Store or update a memory entry."""
         if key in self._entries:
-            # Update existing
-            entry = self._entries[key]
-            entry.content = content
-            entry.category = category
-            entry.timestamp = datetime.now(timezone.utc).isoformat()
+            # Update existing - remove from old category index
+            old_entry = self._entries[key]
+            old_category = old_entry.category
+            if old_category in self._categories:
+                self._categories[old_category].discard(key)
+
+            old_entry.content = content
+            old_entry.category = category
+            old_entry.timestamp = datetime.now(timezone.utc).isoformat()
             if metadata:
-                entry.metadata.update(metadata)
+                old_entry.metadata.update(metadata)
         else:
             entry = MemoryEntry(
                 key=key,
