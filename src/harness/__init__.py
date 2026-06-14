@@ -1,5 +1,6 @@
 """Cognitive LLM Harness — plugin-based reasoning engine."""
 
+import asyncio
 import logging
 from pathlib import Path
 from harness.config import HarnessConfig, load_config
@@ -87,11 +88,18 @@ class CognitiveHarness:
 
         self._mcp_manager.register_from_config(servers)
 
+        # Start each server in its own task to isolate failures
+        tasks = []
         for name in self._mcp_manager.get_server_names():
-            try:
-                await self._mcp_manager.start_server(name)
-            except Exception as e:
-                logger.warning(f"Failed to start MCP server '{name}': {e}")
+            task = asyncio.create_task(self._start_single_mcp(name))
+            tasks.append(task)
+
+        # Wait for all tasks, but don't let one failure cancel others
+        if tasks:
+            results = await asyncio.gather(*tasks, return_exceptions=True)
+            for name, result in zip(self._mcp_manager.get_server_names(), results):
+                if isinstance(result, Exception):
+                    logger.warning(f"MCP '{name}' failed: {result}")
 
         # Register MCP tools with the tool registry
         for tool in self._mcp_manager.get_all_tools():
@@ -104,6 +112,17 @@ class CognitiveHarness:
                     parameters=tool.get("parameters", {}),
                     handler=self._make_mcp_handler(tool_name),
                 )
+
+    async def _start_single_mcp(self, name: str):
+        """Start a single MCP server (isolated in its own task)."""
+        try:
+            await self._mcp_manager.start_server(name)
+        except asyncio.CancelledError:
+            logger.warning(f"MCP '{name}' cancelled")
+            raise
+        except Exception as e:
+            logger.warning(f"MCP '{name}' failed: {e}")
+            # Don't re-raise - let other servers continue
 
     def _make_mcp_handler(self, tool_name: str):
         """Create a handler function for an MCP tool."""

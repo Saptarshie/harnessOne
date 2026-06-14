@@ -1,5 +1,6 @@
 """Multiple MCP server management."""
 
+import asyncio
 import logging
 from dataclasses import dataclass
 
@@ -164,6 +165,8 @@ class MCPManager:
             await client.start()
             self._clients[name] = client
             logger.info(f"Started MCP: {name} ({len(client.tools)} tools)")
+        except asyncio.CancelledError:
+            logger.warning(f"MCP '{name}' cancelled during startup")
         except Exception as e:
             logger.warning(f"Failed to start MCP '{name}': {e}")
 

@@ -2,6 +2,7 @@
 
 import json
 import logging
+import warnings
 from typing import Any
 
 from mcp import ClientSession, StdioServerParameters
@@ -32,6 +33,7 @@ class GenericMCPClient:
         self._session: ClientSession | None = None
         self._context = None
         self._tools: list[dict] = []
+        self._started = False
 
     async def start(self):
         """Start the MCP server and connect."""
@@ -45,16 +47,21 @@ class GenericMCPClient:
             raise ValueError(f"Unknown transport: {self.transport}")
 
         # Discover available tools
-        tools_result = await self._session.list_tools()
-        self._tools = []
-        for tool in tools_result.tools:
-            self._tools.append({
-                "name": tool.name,
-                "description": tool.description or "",
-                "parameters": tool.inputSchema if hasattr(tool, 'inputSchema') else {},
+        try:
+            tools_result = await self._session.list_tools()
+            self._tools = []
+            for tool in tools_result.tools:
+                self._tools.append({
+                    "name": tool.name,
+                    "description": tool.description or "",
+                    "parameters": tool.inputSchema if hasattr(tool, 'inputSchema') else {},
             })
-
-        logger.info(f"MCP '{self.name}' started ({self.transport}): {len(self._tools)} tools")
+            self._started = True
+            logger.info(f"MCP '{self.name}' started ({self.transport}): {len(self._tools)} tools")
+        except Exception as e:
+            logger.warning(f"MCP '{self.name}' connected but failed to list tools: {e}")
+            self._tools = []
+            self._started = True
 
     async def _start_stdio(self):
         """Start a local MCP server via stdio."""
@@ -130,14 +137,26 @@ class GenericMCPClient:
 
     async def shutdown(self):
         """Shut down the MCP server and clean up."""
-        if self._session:
-            try:
-                await self._session.__aexit__(None, None, None)
-            except Exception:
-                pass
-        if self._context:
-            try:
-                await self._context.__aexit__(None, None, None)
-            except Exception:
-                pass
+        if not self._started:
+            return
+
+        # Suppress asyncio cleanup errors
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+
+            if self._session:
+                try:
+                    await self._session.__aexit__(None, None, None)
+                except Exception:
+                    pass
+                self._session = None
+
+            if self._context:
+                try:
+                    await self._context.__aexit__(None, None, None)
+                except Exception:
+                    pass
+                self._context = None
+
+        self._started = False
         logger.info(f"MCP '{self.name}' shut down")

@@ -18,6 +18,7 @@ import os
 import argparse
 import json
 import shutil
+import warnings
 from pathlib import Path
 from datetime import datetime
 
@@ -549,6 +550,11 @@ Workspace:
 # ──────────────────────────────────────────────
 
 def main():
+    # Suppress asyncio cleanup warnings from MCP clients
+    warnings.filterwarnings("ignore", message=".*Task exception was never retrieved.*")
+    warnings.filterwarnings("ignore", message=".*Attempted to exit cancel scope.*")
+    warnings.filterwarnings("ignore", message=".*coroutine.*was never awaited.*")
+
     args = parse_args()
 
     # Disable colors if requested or not a terminal
@@ -633,6 +639,9 @@ def main():
     async def run():
         try:
             await harness.startup()
+        except asyncio.CancelledError:
+            if args.verbose:
+                print_info("Startup cancelled (some MCP servers may have failed)")
         except Exception as e:
             if args.verbose:
                 print_info(f"Startup warning: {e}")
@@ -652,7 +661,14 @@ def main():
             await tui.run()
 
         finally:
-            await harness.shutdown()
+            # Suppress asyncio cleanup errors during shutdown
+            import warnings
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore")
+                try:
+                    await harness.shutdown()
+                except Exception:
+                    pass
 
     asyncio.run(run())
 

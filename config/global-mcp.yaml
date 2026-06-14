@@ -35,6 +35,11 @@ mcp_servers:
   #   command: uvx
   #   args: ["mcp-server-pdf"]
 
+  - name: pdf
+    type: local
+    command: npx
+    args: ["-y", "mcp-pdf", "."]
+
   # ── Remote (SSE) ──────────────────────────────
 
   # Context7 — remote (uncomment to use instead of local)
