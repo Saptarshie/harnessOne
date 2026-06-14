@@ -53,12 +53,13 @@ class TestPromptGenome:
 
 
 class TestEvolutionaryEngine:
-    def test_create_population(self):
+    @pytest.mark.asyncio
+    async def test_create_population(self):
         engine = EvolutionaryEngine(
             gene_keys=["role", "constraints", "style"],
             population_size=10,
         )
-        population = engine.create_population(
+        population = await engine.create_population(
             seed_genes={"role": "You are helpful.", "constraints": "Be concise.", "style": "Professional."}
         )
         assert len(population) == 10
@@ -71,7 +72,7 @@ class TestEvolutionaryEngine:
             gene_keys=["role", "constraints"],
             population_size=5,
         )
-        population = engine.create_population(
+        population = await engine.create_population(
             seed_genes={"role": "Test", "constraints": "Test"}
         )
 
@@ -83,12 +84,13 @@ class TestEvolutionaryEngine:
         for genome in population:
             assert genome.fitness == 0.8
 
-    def test_select_parents(self):
+    @pytest.mark.asyncio
+    async def test_select_parents(self):
         engine = EvolutionaryEngine(
             gene_keys=["role", "constraints"],
             population_size=5,
         )
-        population = engine.create_population(
+        population = await engine.create_population(
             seed_genes={"role": "Test", "constraints": "Test"}
         )
         # Set fitness values
@@ -100,7 +102,8 @@ class TestEvolutionaryEngine:
         # Both parents should be from the population
         assert all(p in population for p in parents)
 
-    def test_evolve_generation(self):
+    @pytest.mark.asyncio
+    async def test_evolve_generation(self):
         engine = EvolutionaryEngine(
             gene_keys=["role", "constraints", "style"],
             population_size=10,
@@ -108,7 +111,7 @@ class TestEvolutionaryEngine:
             crossover_rate=0.7,
         )
         # Use diverse seed genes so crossover produces different children
-        population = engine.create_population(
+        population = await engine.create_population(
             seed_genes={"role": "You are a coding assistant", "constraints": "Be concise and clear", "style": "Professional tone"}
         )
         # Set fitness with variation
@@ -121,12 +124,13 @@ class TestEvolutionaryEngine:
         assert new_pop[0].fitness == 0.9  # Highest fitness
         assert new_pop[1].fitness == 0.8  # Second highest
 
-    def test_get_best_genome(self):
+    @pytest.mark.asyncio
+    async def test_get_best_genome(self):
         engine = EvolutionaryEngine(
             gene_keys=["role", "constraints"],
             population_size=5,
         )
-        population = engine.create_population(
+        population = await engine.create_population(
             seed_genes={"role": "Test", "constraints": "Test"}
         )
         population[2].fitness = 1.0  # Best

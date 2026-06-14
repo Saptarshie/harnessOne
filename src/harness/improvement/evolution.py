@@ -73,20 +73,30 @@ class EvolutionaryEngine:
         self._tournament_size = tournament_size
         self._elite_count = elite_count
 
-    def create_population(self, seed_genes: dict[str, str]) -> list[PromptGenome]:
+    async def create_population(self, seed_genes: dict[str, str], llm: Any | None = None) -> list[PromptGenome]:
         """Create initial population from seed genes.
 
         First genome is the seed, rest are copies with slight variations.
         """
         population = [PromptGenome(genes=dict(seed_genes))]
 
-        # Create variations by shuffling/swapping phrases
+        # Create variations by paraphrasing or shuffling
         for i in range(self._pop_size - 1):
             new_genes = {}
             for key, value in seed_genes.items():
                 words = value.split()
-                if len(words) > 3:
-                    # Slight shuffle
+                if llm and len(words) > 3:
+                    try:
+                        response = await llm.call(
+                            system="Paraphrase the following text to maintain its meaning but use different wording. Return ONLY the paraphrased text.",
+                            messages=[{"role": "user", "content": value}],
+                        )
+                        new_genes[key] = response.content.strip()
+                    except Exception as e:
+                        logger.warning(f"Initial population generation failed for {key}: {e}")
+                        new_genes[key] = value
+                elif len(words) > 3:
+                    # Slight shuffle fallback
                     idx = list(range(len(words)))
                     swap_count = max(1, len(words) // 5)
                     for _ in range(swap_count):
@@ -168,7 +178,7 @@ class EvolutionaryEngine:
             dict with best_genome, history, final_fitness
         """
         gens = generations or 10
-        population = self.create_population(seed_genes)
+        population = await self.create_population(seed_genes, llm)
         history = []
 
         for gen in range(gens):

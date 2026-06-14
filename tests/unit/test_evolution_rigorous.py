@@ -119,36 +119,39 @@ class TestPromptGenomeRigorous:
 class TestEvolutionaryEngineRigorous:
     """Rigorous tests for EvolutionaryEngine."""
 
-    def test_create_population_size(self):
+    @pytest.mark.asyncio
+    async def test_create_population_size(self):
         """Test population size is correct."""
         engine = EvolutionaryEngine(
             gene_keys=["role", "constraints"],
             population_size=50,
         )
-        population = engine.create_population(
+        population = await engine.create_population(
             seed_genes={"role": "Test", "constraints": "Test"}
         )
         assert len(population) == 50
 
-    def test_create_population_preserves_seed(self):
+    @pytest.mark.asyncio
+    async def test_create_population_preserves_seed(self):
         """Test that first genome is the seed."""
         seed = {"role": "You are helpful.", "constraints": "Be concise."}
         engine = EvolutionaryEngine(
             gene_keys=["role", "constraints"],
             population_size=10,
         )
-        population = engine.create_population(seed)
+        population = await engine.create_population(seed)
 
         assert population[0].genes == seed
 
-    def test_create_population_diversity(self):
+    @pytest.mark.asyncio
+    async def test_create_population_diversity(self):
         """Test that population has diversity."""
         seed = {"role": "You are a coding assistant", "constraints": "Be concise and clear"}
         engine = EvolutionaryEngine(
             gene_keys=["role", "constraints"],
             population_size=20,
         )
-        population = engine.create_population(seed)
+        population = await engine.create_population(seed)
 
         # At least some genomes should differ from seed
         differs = 0
@@ -166,7 +169,7 @@ class TestEvolutionaryEngineRigorous:
             gene_keys=["role"],
             population_size=5,
         )
-        population = engine.create_population({"role": "Test"})
+        population = await engine.create_population({"role": "Test"})
 
         call_count = 0
         async def failing_fitness(genome):
@@ -182,28 +185,30 @@ class TestEvolutionaryEngineRigorous:
         for genome in population:
             assert genome.fitness >= 0.0
 
-    def test_select_parents_tournament_size(self):
+    @pytest.mark.asyncio
+    async def test_select_parents_tournament_size(self):
         """Test tournament selection respects tournament size."""
         engine = EvolutionaryEngine(
             gene_keys=["role"],
             population_size=10,
             tournament_size=5,
         )
-        population = engine.create_population({"role": "Test"})
+        population = await engine.create_population({"role": "Test"})
         for i, genome in enumerate(population):
             genome.fitness = i * 0.1
 
         parents = engine.select_parents(population, n=3)
         assert len(parents) == 3
 
-    def test_elitism_preserves_best(self):
+    @pytest.mark.asyncio
+    async def test_elitism_preserves_best(self):
         """Test that elitism preserves best genomes."""
         engine = EvolutionaryEngine(
             gene_keys=["role"],
             population_size=10,
             elite_count=3,
         )
-        population = engine.create_population({"role": "Test"})
+        population = await engine.create_population({"role": "Test"})
         for i, genome in enumerate(population):
             genome.fitness = i * 0.1
 
@@ -214,13 +219,14 @@ class TestEvolutionaryEngineRigorous:
         assert new_pop[1].fitness == pytest.approx(0.8)
         assert new_pop[2].fitness == pytest.approx(0.7)
 
-    def test_evolve_generation_size(self):
+    @pytest.mark.asyncio
+    async def test_evolve_generation_size(self):
         """Test evolved generation has correct size."""
         engine = EvolutionaryEngine(
             gene_keys=["role", "constraints"],
             population_size=15,
         )
-        population = engine.create_population({"role": "Test", "constraints": "Test"})
+        population = await engine.create_population({"role": "Test", "constraints": "Test"})
         for i, genome in enumerate(population):
             genome.fitness = i * 0.1
 
