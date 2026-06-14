@@ -43,7 +43,7 @@ mcp_servers:
     args: ["-y", "@modelcontextprotocol/server-filesystem", "."]
 
 tools:
-  enabled: [file_ops, shell, git, search, web]
+  enabled: [file_ops, shell, git, search, web, skill_ops]
   shell:
     allowed_commands: []
     blocked_commands: ["rm -rf /", "format"]

@@ -61,7 +61,7 @@ class HarnessConfig:
     mcp_servers: list[dict] = field(default_factory=list)
 
     # Tools settings (v3)
-    tools_enabled: list[str] = field(default_factory=lambda: ["file_ops", "shell", "git", "search", "web"])
+    tools_enabled: list[str] = field(default_factory=lambda: ["file_ops", "shell", "git", "search", "web", "skill_ops"])
 
     # API settings (v3)
     api_enabled: bool = False
@@ -263,7 +263,7 @@ def load_config(config_path: str, global_config_path: str = None) -> HarnessConf
         skills_paths=all_skills_paths,
         skills_auto_load=skills.get("auto_load", True),
         mcp_servers=merged_mcp,
-        tools_enabled=tools.get("enabled", ["file_ops", "shell", "git", "search", "web"]),
+        tools_enabled=tools.get("enabled", ["file_ops", "shell", "git", "search", "web", "skill_ops"]),
         api_enabled=api.get("enabled", False),
         api_host=api.get("host", "0.0.0.0"),
         api_port=api.get("port", 8000),

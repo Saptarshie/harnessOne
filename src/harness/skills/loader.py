@@ -39,11 +39,21 @@ class SkillLoader:
             frontmatter = yaml.safe_load(match.group(1))
             content = match.group(2)
 
+            category = frontmatter.get("category")
+            if not category:
+                # Try to derive from path: path is typically .../skills/<category>/<name>/SKILL.md
+                # So parent.parent.name would be <category>
+                if len(file_path.parts) >= 3:
+                    category = file_path.parent.parent.name
+                else:
+                    category = "general"
+
             return {
                 "name": frontmatter.get("name", file_path.parent.name),
                 "description": frontmatter.get("description", ""),
                 "version": frontmatter.get("version", "1.0.0"),
-                "tags": frontmatter.get("metadata", {}).get("tags", []),
+                "category": category,
+                "tags": frontmatter.get("metadata", {}).get("tags", []) or frontmatter.get("metadata", {}).get("hermes", {}).get("tags", []),
                 "related_skills": frontmatter.get("metadata", {}).get("related_skills", []),
                 "content": content,
                 "path": str(file_path),
@@ -64,7 +74,7 @@ class SkillLoader:
     def get_all_skills(self) -> list[dict]:
         """Get all discovered skills (without content, for listing)."""
         return [
-            {"name": s["name"], "description": s["description"], "tags": s["tags"]}
+            {"name": s["name"], "description": s["description"], "category": s.get("category", "general"), "tags": s["tags"]}
             for s in self._skills.values()
         ]
 

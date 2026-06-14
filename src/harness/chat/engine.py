@@ -30,6 +30,7 @@ class ChatEngine:
         scratchpad: Any | None = None,
         global_memory: Any | None = None,
         trace_logger: Any | None = None,
+        optimizer: Any | None = None,
     ):
         self._llm = llm
         self._tools = tool_registry
@@ -40,6 +41,7 @@ class ChatEngine:
         self._scratchpad = scratchpad
         self._global_memory = global_memory
         self._trace_logger = trace_logger
+        self._optimizer = optimizer
 
     @property
     def session(self) -> Session:
@@ -246,7 +248,20 @@ class ChatEngine:
 
     def _build_system_prompt(self, user_message: str = "") -> str:
         """Build system prompt with skills, memory, scratchpad, and global memory context."""
-        parts = ["You are a helpful AI assistant with access to tools."]
+        base_prompt = (
+            "You are a helpful AI assistant with access to tools.\n"
+            "You have the ability to metalearn: when you discover a reusable workflow, tool sequence, or solution pattern, "
+            "you MUST use the create_skill tool to document it as a skill. This allows you to learn and evolve over time."
+        )
+
+        if getattr(self, "_optimizer", None) and getattr(self, "_tracker", None):
+            best = self._optimizer.get_best_prompt()
+            if best and best.get("prompt_id") != "none":
+                metrics = self._tracker.get_metrics_for_prompt(best["prompt_id"])
+                if metrics and metrics[0].prompt_text:
+                    base_prompt = metrics[0].prompt_text
+
+        parts = [base_prompt]
 
         # Add skills context
         if self._skills:
@@ -254,7 +269,7 @@ class ChatEngine:
             if skill_list:
                 parts.append("\n## Available Skills")
                 for s in skill_list:
-                    parts.append(f"- {s['name']}: {s['description']}")
+                    parts.append(f"- {s['name']} (Category: {s.get('category', 'general')}): {s['description']}")
 
                 if self._session.messages:
                     last_user = [m for m in self._session.messages if m.role == "user"]

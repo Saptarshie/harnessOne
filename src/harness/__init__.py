@@ -14,6 +14,7 @@ from harness.tools.builtin.shell import register_shell_tool
 from harness.tools.builtin.git_ops import register_git_tools
 from harness.tools.builtin.search import register_search_tools
 from harness.tools.builtin.web import register_web_tool
+from harness.tools.builtin.skill_ops import register_skill_tools
 from harness.chat.engine import ChatEngine
 from harness.mcp.manager import MCPManager
 from harness.improvement.tracker import PromptTracker
@@ -138,6 +139,8 @@ class CognitiveHarness:
             register_search_tools(self._tool_registry)
         if "web" in enabled:
             register_web_tool(self._tool_registry)
+        if "skill_ops" in enabled:
+            register_skill_tools(self._tool_registry, self._skill_loader)
 
     async def _start_mcp_servers(self):
         """Start configured MCP servers and register their tools."""
@@ -212,6 +215,7 @@ class CognitiveHarness:
             scratchpad=self._scratchpad,
             global_memory=self._global_memory,
             trace_logger=self._trace_logger,
+            optimizer=self._optimizer,
         )
         return self._session.id
 
