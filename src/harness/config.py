@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 import yaml
+from dotenv import load_dotenv
 
 
 @dataclass
@@ -35,6 +36,8 @@ class HarnessConfig:
 def load_config(config_path: str) -> HarnessConfig:
     """Load and validate configuration from a YAML file.
 
+    Automatically loads .env file from the project root if it exists.
+
     Args:
         config_path: Path to the YAML configuration file.
 
@@ -45,6 +48,11 @@ def load_config(config_path: str) -> HarnessConfig:
         FileNotFoundError: If config file doesn't exist.
         ValueError: If required fields are missing or API key not found.
     """
+    # Load .env from project root (parent of config/)
+    env_path = Path(config_path).parent.parent / ".env"
+    if env_path.exists():
+        load_dotenv(env_path)
+
     path = Path(config_path)
     if not path.exists():
         raise FileNotFoundError(f"Config file not found: {config_path}")
