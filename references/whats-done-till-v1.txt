@@ -134,3 +134,42 @@ Features Verified:
 - Trace logging (JSONL, metadata)
 - Orchestrator graph (nodes, edges, routing)
 - Full harness with real LLM (math, reasoning, code)
+
+--------------------------------------------------------------------------------------------------------
+How to Run:
+
+All Fixed & Working
+What was wrong:
+1. LLMClient had no call_with_tools — added it with proper OpenAI function calling format
+2. No workspace — harness was running in project directory, risking accidental file modifications
+3. Unicode encoding error — Windows cp1252 can't display emojis; now uses UTF-8
+4. Tool message format — DeepSeek requires type: "function" in tool_calls
+What was created:
+D:\prac_prog\fun\hernessOne\harness-workspace\
+├── config.yaml          # Workspace config (points to workspace dirs)
+├── .env                 # API key
+├── sessions/            # Session storage
+├── vault/               # Memory vault (for MCP later)
+└── skills/              # Skills directory
+    └── file-operations/
+How to use:
+# Start interactive session
+python runner.py
+
+# List sessions
+python runner.py --sessions
+
+# List skills
+python runner.py --skills
+
+# List tools
+python runner.py --tools
+
+# Resume a session
+python runner.py --resume 5e67be90
+Test results:
+- 92 unit tests: All passing
+- Interactive mode: Working (tested "hi" and "list files")
+- Tool execution: Working (LLM tried ls, got error, adapted to dir)
+- Sessions: Persisting and listing correctly
+- Skills: Loading correctly
