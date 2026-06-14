@@ -117,39 +117,17 @@ skills:
   auto_load: true
 
 mcp_servers:
+  # Global MCP servers are loaded from config/global-mcp.yaml
+  # Add project-specific servers here (same name overrides global)
   # Example: Filesystem access
   # - name: filesystem
   #   command: npx
   #   args: ["-y", "@modelcontextprotocol/server-filesystem", "."]
   #
-  # Example: GitHub
-  # - name: github
-  #   command: npx
-  #   args: ["-y", "@modelcontextprotocol/server-github"]
-  #   env:
-  #     GITHUB_PERSONAL_ACCESS_TOKEN: "${GITHUB_TOKEN}"
-  #
-  # Example: Brave Search
-  # - name: brave-search
-  #   command: npx
-  #   args: ["-y", "@modelcontextprotocol/server-brave-search"]
-  #   env:
-  #     BRAVE_API_KEY: "${BRAVE_API_KEY}"
-  #
   # Example: Context7 (library docs)
   # - name: context7
   #   command: npx
   #   args: ["-y", "@upstash/context7-mcp"]
-  #
-  # Example: PDF tools
-  # - name: pdf
-  #   command: uvx
-  #   args: ["mcp-server-pdf"]
-  #
-  # Example: Custom Python MCP server
-  # - name: my-server
-  #   command: python
-  #   args: ["path/to/my_mcp_server.py"]
   []
 
 tools:

@@ -1,0 +1,33 @@
+# Global MCP servers — available in ALL projects
+# Local .harness/config.yaml can override or add project-specific servers
+# Format: same as mcp_servers in config.yaml
+
+mcp_servers:
+  # Filesystem — access files in current project directory
+  - name: filesystem
+    command: npx
+    args: ["-y", "@modelcontextprotocol/server-filesystem", "."]
+
+  # Context7 — up-to-date library documentation
+  - name: context7
+    command: npx
+    args: ["-y", "@upstash/context7-mcp"]
+
+  # GitHub — repo management, issues, PRs (needs GITHUB_TOKEN env)
+  # - name: github
+  #   command: npx
+  #   args: ["-y", "@modelcontextprotocol/server-github"]
+  #   env:
+  #     GITHUB_PERSONAL_ACCESS_TOKEN: "${GITHUB_TOKEN}"
+
+  # Brave Search — web search (needs BRAVE_API_KEY env)
+  # - name: brave-search
+  #   command: npx
+  #   args: ["-y", "@modelcontextprotocol/server-brave-search"]
+  #   env:
+  #     BRAVE_API_KEY: "${BRAVE_API_KEY}"
+
+  # PDF tools
+  # - name: pdf
+  #   command: uvx
+  #   args: ["mcp-server-pdf"]

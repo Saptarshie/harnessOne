@@ -1,11 +1,17 @@
 """Configuration loading and validation."""
 
 import os
+import logging
 from dataclasses import dataclass, field
 from pathlib import Path
 
 import yaml
 from dotenv import load_dotenv
+
+logger = logging.getLogger(__name__)
+
+# Global config location (in the harness repo itself)
+GLOBAL_CONFIG_PATH = Path(__file__).parent.parent.parent / "config" / "global-mcp.yaml"
 
 
 @dataclass
@@ -63,13 +69,53 @@ class HarnessConfig:
     api_port: int = 8000
 
 
-def load_config(config_path: str) -> HarnessConfig:
+def _load_yaml(path: Path) -> dict:
+    """Load a YAML file safely."""
+    if not path.exists():
+        return {}
+    try:
+        with open(path) as f:
+            return yaml.safe_load(f) or {}
+    except Exception as e:
+        logger.warning(f"Failed to load {path}: {e}")
+        return {}
+
+
+def _merge_mcp_servers(global_servers: list, local_servers: list) -> list:
+    """Merge global and local MCP servers.
+
+    Local servers override global servers with the same name.
+    """
+    global_servers = global_servers or []
+    local_servers = local_servers or []
+
+    # Index global by name
+    merged = {}
+    for srv in global_servers:
+        if isinstance(srv, dict) and srv.get("name"):
+            merged[srv["name"]] = srv
+
+    # Local overrides global
+    for srv in local_servers:
+        if isinstance(srv, dict) and srv.get("name"):
+            merged[srv["name"]] = srv
+
+    return list(merged.values())
+
+
+def load_config(config_path: str, global_config_path: str = None) -> HarnessConfig:
     """Load and validate configuration from a YAML file.
 
-    Automatically loads .env file from the project root if it exists.
+    Automatically loads:
+    - .env file from the project root
+    - Global MCP config from the harness repo (config/global-mcp.yaml)
+    - Local config from the project (.harness/config.yaml)
+
+    Global and local MCP servers are merged (local overrides global).
 
     Args:
-        config_path: Path to the YAML configuration file.
+        config_path: Path to the local YAML configuration file.
+        global_config_path: Optional path to global config (defaults to harness repo).
 
     Returns:
         Resolved HarnessConfig with API key from environment.
@@ -85,12 +131,26 @@ def load_config(config_path: str) -> HarnessConfig:
     if env_path.exists():
         load_dotenv(env_path)
 
+    # Load global config
+    global_path = Path(global_config_path) if global_config_path else GLOBAL_CONFIG_PATH
+    global_raw = _load_yaml(global_path)
+
+    # Load local config
     path = Path(config_path)
     if not path.exists():
         raise FileNotFoundError(f"Config file not found: {config_path}")
 
     with open(path) as f:
         raw = yaml.safe_load(f)
+
+    # Merge MCP servers: global + local (local overrides same name)
+    global_mcp = global_raw.get("mcp_servers", [])
+    local_mcp = raw.get("mcp_servers", [])
+    merged_mcp = _merge_mcp_servers(global_mcp, local_mcp)
+
+    # Merge skills paths: global + local
+    global_skills_paths = global_raw.get("skills", {}).get("paths", [])
+    local_skills_paths = raw.get("skills", {}).get("paths", [])
 
     llm = raw.get("llm", {})
     harness = raw.get("harness", {})
@@ -139,6 +199,11 @@ def load_config(config_path: str) -> HarnessConfig:
     tools = raw.get("tools", {})
     api = raw.get("api", {})
 
+    # Merge all skills paths (global + local)
+    all_skills_paths = global_skills_paths + local_skills_paths
+    if not all_skills_paths:
+        all_skills_paths = ["skills/"]
+
     return HarnessConfig(
         model=model,
         api_base=api_base,
@@ -165,9 +230,9 @@ def load_config(config_path: str) -> HarnessConfig:
         session_storage_path=session.get("storage_path", "sessions"),
         session_auto_save=session.get("auto_save", True),
         session_max_history_tokens=session.get("max_history_tokens", 100000),
-        skills_paths=skills.get("paths", ["skills/"]),
+        skills_paths=all_skills_paths,
         skills_auto_load=skills.get("auto_load", True),
-        mcp_servers=raw.get("mcp_servers", []),
+        mcp_servers=merged_mcp,
         tools_enabled=tools.get("enabled", ["file_ops", "shell", "git", "search", "web"]),
         api_enabled=api.get("enabled", False),
         api_host=api.get("host", "0.0.0.0"),
