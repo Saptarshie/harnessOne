@@ -253,7 +253,7 @@ class ChatEngine:
             skill_list = self._skills.get_all_skills()
             if skill_list:
                 parts.append("\n## Available Skills")
-                for s in skill_list[:10]:
+                for s in skill_list:
                     parts.append(f"- {s['name']}: {s['description']}")
 
                 if self._session.messages:
