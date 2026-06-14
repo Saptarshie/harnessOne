@@ -16,6 +16,11 @@ import argparse
 import json
 from datetime import datetime
 
+# Fix Windows console encoding for Unicode (emojis etc.)
+if sys.platform == "win32":
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+
 # Add src to path
 sys.path.insert(0, "src")
 
@@ -427,7 +432,7 @@ Examples:
     parser.add_argument("--api", action="store_true", help="Start REST API server")
     parser.add_argument("--host", default="0.0.0.0", help="API host (default: 0.0.0.0)")
     parser.add_argument("--port", type=int, default=8000, help="API port (default: 8000)")
-    parser.add_argument("--config", default="config/default.yaml", help="Config file path")
+    parser.add_argument("--config", default="D:/prac_prog/fun/hernessOne/harness-workspace/config.yaml", help="Config file path")
     parser.add_argument("--no-color", action="store_true", help="Disable colored output")
     parser.add_argument("--verbose", action="store_true", help="Enable verbose logging")
     return parser.parse_args()

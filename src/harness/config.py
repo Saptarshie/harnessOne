@@ -78,8 +78,10 @@ def load_config(config_path: str) -> HarnessConfig:
         FileNotFoundError: If config file doesn't exist.
         ValueError: If required fields are missing or API key not found.
     """
-    # Load .env from project root (parent of config/)
+    # Load .env from project root (parent of config/) or same directory
     env_path = Path(config_path).parent.parent / ".env"
+    if not env_path.exists():
+        env_path = Path(config_path).parent / ".env"
     if env_path.exists():
         load_dotenv(env_path)
 

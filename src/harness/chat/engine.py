@@ -1,5 +1,6 @@
 """Conversation engine with multi-turn tool execution."""
 
+import json
 import logging
 from typing import Any
 
@@ -48,7 +49,14 @@ class ChatEngine:
 
             if response.tool_calls:
                 tool_calls_data = [
-                    {"id": tc.id, "name": tc.name, "arguments": tc.arguments}
+                    {
+                        "id": tc.id,
+                        "type": "function",
+                        "function": {
+                            "name": tc.name,
+                            "arguments": json.dumps(tc.arguments),
+                        },
+                    }
                     for tc in response.tool_calls
                 ]
                 self._session.add_assistant_message(

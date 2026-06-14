@@ -47,12 +47,8 @@ class CognitiveHarness:
         if self._config.skills_auto_load:
             self._skill_loader.discover()
         self._register_builtin_tools()
-        # MCP is optional — only start if vault exists and is needed
-        if self._config.vault_path and Path(self._config.vault_path).exists():
-            try:
-                await self._orchestrator.start_mcp_client()
-            except Exception:
-                pass
+        # MCP is optional — disabled for now due to asyncio conflicts
+        # Can be enabled later with: await self._orchestrator.start_mcp_client()
 
     async def shutdown(self):
         """Clean up resources."""

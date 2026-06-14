@@ -19,13 +19,16 @@ class Message:
             self.timestamp = datetime.now(timezone.utc).isoformat()
 
     def to_dict(self) -> dict:
-        d = {"role": self.role, "content": self.content, "timestamp": self.timestamp}
+        d = {"role": self.role, "content": self.content}
         if self.tool_calls:
             d["tool_calls"] = self.tool_calls
         if self.tool_call_id:
             d["tool_call_id"] = self.tool_call_id
         if self.name:
             d["name"] = self.name
+        # Add type field for tool messages (required by some providers)
+        if self.role == "tool":
+            d["type"] = "tool_result"
         return d
 
     @classmethod
