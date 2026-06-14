@@ -35,39 +35,17 @@ from harness import CognitiveHarness, load_config
 from harness.config import HarnessConfig
 from harness.session.session import Session
 
+# Rich imports for TUI
+from rich.console import Console
+from rich.markdown import Markdown
+from rich.panel import Panel
+from rich.table import Table
+from rich.text import Text
+from rich.live import Live
+from rich.layout import Layout
+from rich import box
 
-# ──────────────────────────────────────────────
-# ANSI Colors
-# ──────────────────────────────────────────────
-
-class C:
-    """ANSI color codes."""
-    RESET   = "\033[0m"
-    BOLD    = "\033[1m"
-    DIM     = "\033[2m"
-    ITALIC  = "\033[3m"
-
-    BLACK   = "\033[30m"
-    RED     = "\033[31m"
-    GREEN   = "\033[32m"
-    YELLOW  = "\033[33m"
-    BLUE    = "\033[34m"
-    MAGENTA = "\033[35m"
-    CYAN    = "\033[36m"
-    WHITE   = "\033[37m"
-
-    BG_BLACK  = "\033[40m"
-    BG_RED    = "\033[41m"
-    BG_GREEN  = "\033[42m"
-    BG_YELLOW = "\033[43m"
-    BG_BLUE   = "\033[44m"
-
-    @staticmethod
-    def disable():
-        C.RESET = C.BOLD = C.DIM = C.ITALIC = ""
-        C.BLACK = C.RED = C.GREEN = C.YELLOW = C.BLUE = ""
-        C.MAGENTA = C.CYAN = C.WHITE = ""
-        C.BG_BLACK = C.BG_RED = C.BG_GREEN = C.BG_YELLOW = C.BG_BLUE = ""
+console = Console()
 
 
 # ──────────────────────────────────────────────
@@ -166,7 +144,6 @@ def get_config_path(cwd: str = None) -> Path:
     config_path = workspace / "config.yaml"
 
     if not config_path.exists():
-        # Create default config with correct paths
         harness_root = str(HARNESS_ROOT).replace("\\", "/")
         config_content = DEFAULT_CONFIG.format(harness_root=harness_root)
         config_path.write_text(config_content, encoding="utf-8")
@@ -178,17 +155,14 @@ def get_env_path(cwd: str = None) -> Path:
     """Get .env path — checks CWD/.env, then .harness/.env."""
     cwd = Path(cwd or os.getcwd())
 
-    # Check CWD/.env first
     env_file = cwd / ".env"
     if env_file.exists():
         return env_file
 
-    # Check .harness/.env
     harness_env = cwd / WORKSPACE_DIR / ".env"
     if harness_env.exists():
         return harness_env
 
-    # Create .env in .harness/ with placeholder
     harness_env.write_text(
         "# Add your API keys here\nOPENAI_API_KEY=your-key-here\n",
         encoding="utf-8",
@@ -197,134 +171,162 @@ def get_env_path(cwd: str = None) -> Path:
 
 
 # ──────────────────────────────────────────────
-# Output Helpers
+# Rich TUI Helpers
 # ──────────────────────────────────────────────
 
 def banner():
-    cwd = os.getcwd()
-    print(f"""
-{C.CYAN}{C.BOLD}============================================================
-          Cognitive Harness -- Terminal Interface
-============================================================{C.RESET}
-{C.DIM}  Workspace: {cwd}{C.RESET}
-""")
+    """Display startup banner."""
+    console.print()
+    console.print(
+        Panel(
+            "[bold cyan]Cognitive Harness[/bold cyan]\n"
+            f"[dim]Workspace: {os.getcwd()}[/dim]",
+            border_style="cyan",
+            box=box.DOUBLE,
+        )
+    )
+    console.print()
 
 
-def print_assistant(text: str):
-    """Print assistant response with formatting."""
-    print(f"\n{C.GREEN}{C.BOLD}Assistant:{C.RESET}")
-    for line in text.split("\n"):
-        print(f"  {line}")
-    print()
+def show_status(session_id: str, context_tokens: int, max_tokens: int = 128000):
+    """Display status bar with context window usage."""
+    pct = min(100, int(context_tokens / max_tokens * 100))
+    bar_len = 20
+    filled = int(pct / 100 * bar_len)
+    bar = "█" * filled + "░" * (bar_len - filled)
+
+    # Color based on usage
+    if pct < 50:
+        color = "green"
+    elif pct < 80:
+        color = "yellow"
+    else:
+        color = "red"
+
+    status = (
+        f"[dim]Session:[/dim] [cyan]{session_id[:8]}[/cyan]  "
+        f"[dim]Context:[/dim] [{color}]{bar} {context_tokens:,} tokens ({pct}%)[/{color}]"
+    )
+    console.print(f"[dim]{'─' * 60}[/dim]")
+    console.print(status)
+    console.print()
 
 
-def print_tool_call(name: str, arguments: dict):
-    """Print a tool call being executed."""
-    args_str = ", ".join(f"{k}={repr(v)[:50]}" for k, v in arguments.items())
-    print(f"  {C.YELLOW}[tool] {C.BOLD}{name}{C.RESET}{C.DIM}({args_str}){C.RESET}")
+def show_tool_call(name: str, arguments: dict):
+    """Display a tool call being executed."""
+    args_str = ", ".join(f"{k}={repr(v)[:40]}" for k, v in arguments.items())
+    console.print(f"  [yellow][tool][/yellow] [bold]{name}[/bold]({args_str})")
 
 
-def print_tool_result(name: str, result: str):
-    """Print tool execution result."""
-    preview = result[:200].replace("\n", " ")
-    if len(result) > 200:
+def show_tool_result(name: str, result: str):
+    """Display tool execution result."""
+    preview = result[:150].replace("\n", " ")
+    if len(result) > 150:
         preview += "..."
-    print(f"  {C.DIM}  -> {preview}{C.RESET}")
+    console.print(f"  [dim]  -> {preview}[/dim]")
 
-
-def print_error(text: str):
-    """Print error message."""
-    print(f"\n{C.RED}{C.BOLD}Error:{C.RESET} {text}\n")
-
-
-def print_info(text: str):
-    """Print info message."""
-    print(f"{C.DIM}{text}{C.RESET}")
-
-
-def print_system(text: str):
-    """Print system message."""
-    print(f"{C.MAGENTA}{text}{C.RESET}")
-
-
-def format_timestamp(ts: str) -> str:
-    """Format ISO timestamp to readable."""
-    try:
-        dt = datetime.fromisoformat(ts.replace("Z", "+00:00"))
-        return dt.strftime("%Y-%m-%d %H:%M")
-    except Exception:
-        return ts[:16]
-
-
-# ──────────────────────────────────────────────
-# Session Display
-# ──────────────────────────────────────────────
 
 def show_sessions(sessions: list[dict]):
     """Display sessions in a table."""
     if not sessions:
-        print(f"\n{C.DIM}No sessions found.{C.RESET}\n")
+        console.print("\n[dim]No sessions found.[/dim]\n")
         return
 
-    print(f"\n{C.BOLD}Sessions:{C.RESET}")
-    print(f"  {C.DIM}{'ID':<10} {'Title':<40} {'Msgs':>5} {'Last Active':<20}{C.RESET}")
-    print(f"  {C.DIM}{'-'*10} {'-'*40} {'-'*5} {'-'*20}{C.RESET}")
+    table = Table(title="Sessions", box=box.SIMPLE)
+    table.add_column("ID", style="cyan")
+    table.add_column("Title")
+    table.add_column("Msgs", justify="right")
+    table.add_column("Last Active")
+
     for s in sessions:
-        title = s["title"][:38] + ".." if len(s["title"]) > 40 else s["title"]
-        last = format_timestamp(s["last_active"])
-        print(f"  {C.CYAN}{s['id']:<10}{C.RESET} {title:<40} {s['message_count']:>5} {last:<20}")
-    print()
+        title = s["title"][:50] + "..." if len(s["title"]) > 50 else s["title"]
+        try:
+            dt = datetime.fromisoformat(s["last_active"].replace("Z", "+00:00"))
+            last = dt.strftime("%Y-%m-%d %H:%M")
+        except Exception:
+            last = s["last_active"][:16]
+        table.add_row(s["id"], title, str(s["message_count"]), last)
+
+    console.print(table)
+    console.print()
 
 
 def show_skills(skills: list[dict]):
     """Display available skills."""
     if not skills:
-        print(f"\n{C.DIM}No skills found.{C.RESET}\n")
+        console.print("\n[dim]No skills found.[/dim]\n")
         return
 
-    print(f"\n{C.BOLD}Available Skills:{C.RESET}")
+    table = Table(title="Skills", box=box.SIMPLE)
+    table.add_column("Name", style="cyan")
+    table.add_column("Description")
+    table.add_column("Tags")
+
     for s in skills:
         tags = ", ".join(s.get("tags", []))
-        print(f"  {C.CYAN}{s['name']}{C.RESET}: {s['description']}")
-        if tags:
-            print(f"    {C.DIM}tags: {tags}{C.RESET}")
-    print()
+        table.add_row(s["name"], s["description"], tags)
+
+    console.print(table)
+    console.print()
 
 
-def show_tools(tools: list[dict]):
+def show_tools(tools: list[dict], mcp_tools: list[dict] = None):
     """Display available tools."""
-    if not tools:
-        print(f"\n{C.DIM}No tools found.{C.RESET}\n")
+    if not tools and not mcp_tools:
+        console.print("\n[dim]No tools found.[/dim]\n")
         return
 
-    print(f"\n{C.BOLD}Available Tools:{C.RESET}")
-    for t in tools:
-        params = ", ".join(
-            f"{k}: {v.get('type', 'string')}"
-            for k, v in t.get("parameters", {}).items()
-        )
-        print(f"  {C.YELLOW}{t['name']}{C.RESET}({params}) -- {t['description']}")
-    print()
+    if tools:
+        table = Table(title="Built-in Tools", box=box.SIMPLE)
+        table.add_column("Name", style="yellow")
+        table.add_column("Parameters")
+        table.add_column("Description")
+
+        for t in tools:
+            params = ", ".join(
+                f"{k}: {v.get('type', 'string')}"
+                for k, v in t.get("parameters", {}).items()
+            )
+            table.add_row(t["name"], params, t["description"][:60])
+
+        console.print(table)
+
+    if mcp_tools:
+        table = Table(title="MCP Tools", box=box.SIMPLE)
+        table.add_column("Name", style="magenta")
+        table.add_column("Source")
+        table.add_column("Description")
+
+        for t in mcp_tools:
+            source = t.get("source", "mcp")
+            table.add_row(t["name"], source, t["description"][:60])
+
+        console.print(table)
+
+    console.print()
 
 
 def show_help():
     """Display help."""
-    print(f"""
-{C.BOLD}Commands:{C.RESET}
-  {C.CYAN}/sessions{C.RESET}         List all sessions
-  {C.CYAN}/resume <id>{C.RESET}      Resume a session
-  {C.CYAN}/new{C.RESET}              Start a new session
-  {C.CYAN}/skills{C.RESET}           List available skills
-  {C.CYAN}/tools{C.RESET}            List available tools (including MCP)
-  {C.CYAN}/history{C.RESET}          Show conversation history
-  {C.CYAN}/clear{C.RESET}            Clear current session
-  {C.CYAN}/save{C.RESET}             Save current session
-  {C.CYAN}/exit{C.RESET}             Save and exit
-
-{C.BOLD}Shortcuts:{C.RESET}
-  {C.DIM}Ctrl+C{C.RESET}            Cancel current input
-  {C.DIM}Ctrl+D{C.RESET}            Exit (same as /exit)
-""")
+    console.print(
+        Panel(
+            "[bold]Commands:[/bold]\n"
+            "  [cyan]/sessions[/cyan]         List all sessions\n"
+            "  [cyan]/resume <id>[/cyan]      Resume a session\n"
+            "  [cyan]/new[/cyan]              Start a new session\n"
+            "  [cyan]/skills[/cyan]           List available skills\n"
+            "  [cyan]/tools[/cyan]            List available tools\n"
+            "  [cyan]/history[/cyan]          Show conversation history\n"
+            "  [cyan]/clear[/cyan]            Clear current session\n"
+            "  [cyan]/save[/cyan]             Save current session\n"
+            "  [cyan]/exit[/cyan]             Save and exit\n\n"
+            "[bold]Shortcuts:[/bold]\n"
+            "  [dim]Ctrl+C[/dim]            Cancel current input\n"
+            "  [dim]Ctrl+D[/dim]            Exit (same as /exit)",
+            title="Help",
+            border_style="cyan",
+        )
+    )
 
 
 # ──────────────────────────────────────────────
@@ -348,21 +350,22 @@ class HarnessTUI:
             try:
                 await self._harness.resume_session(self._session_id)
                 session = self._harness._session
-                print_system(f"Resumed session: {session.id} ({len(session.messages)} messages)")
+                console.print(f"[magenta]Resumed session: {session.id} ({len(session.messages)} messages)[/magenta]")
             except Exception as e:
-                print_error(f"Failed to resume session: {e}")
+                console.print(f"[red]Failed to resume session: {e}[/red]")
                 self._session_id = await self._harness.start_session()
         else:
             self._session_id = await self._harness.start_session()
 
-        print_info(f"Session: {self._session_id}")
-        print_info("Type your message or /help for commands.\n")
+        # Show initial status
+        self._show_context_status()
+        console.print("[dim]Type your message or /help for commands.[/dim]\n")
 
         while self._running:
             try:
-                user_input = input(f"{C.CYAN}{C.BOLD}>{C.RESET} ").strip()
+                user_input = await self._get_input()
             except (EOFError, KeyboardInterrupt):
-                print("\n")
+                console.print()
                 await self._do_exit()
                 break
 
@@ -374,28 +377,79 @@ class HarnessTUI:
             else:
                 await self._handle_message(user_input)
 
-    async def _handle_message(self, message: str):
-        """Process a user message through the harness."""
-        try:
-            original_execute = self._harness._tool_registry.execute
+    def _show_context_status(self):
+        """Show context window status."""
+        engine = self._harness._chat_engine
+        if engine:
+            tokens = engine.context_tokens
+            show_status(self._session_id, tokens)
+        else:
+            show_status(self._session_id, 0)
 
-            def traced_execute(name, params):
-                print_tool_call(name, params)
-                result = original_execute(name, params)
-                print_tool_result(name, result)
+    async def _get_input(self) -> str:
+        """Get user input with prompt."""
+        try:
+            line = console.input("[cyan bold]>[/cyan bold] ").strip()
+            return line
+        except KeyboardInterrupt:
+            console.print()
+            return ""
+
+    async def _handle_message(self, message: str):
+        """Process a user message through the harness with streaming."""
+        try:
+            # Monkey-patch tool registry for display
+            original_execute = self._harness._tool_registry.execute_async
+
+            async def traced_execute(name, params):
+                show_tool_call(name, params)
+                result = await original_execute(name, params)
+                show_tool_result(name, result)
                 return result
 
-            self._harness._tool_registry.execute = traced_execute
+            self._harness._tool_registry.execute_async = traced_execute
 
-            response = await self._harness.chat(message)
-            print_assistant(response)
+            # Stream response
+            response_text = ""
+            console.print()
 
-            self._harness._tool_registry.execute = original_execute
+            async def on_stream(delta: str, is_done: bool, usage: dict | None):
+                nonlocal response_text
+                if delta:
+                    response_text += delta
+                    # Print delta in real-time (plain text)
+                    sys.stdout.write(delta)
+                    sys.stdout.flush()
+                if is_done and usage:
+                    # Final update with markdown rendering
+                    pass
+
+            response = await self._harness.chat(message, on_stream=on_stream)
+
+            # If streaming worked, the text was already printed
+            # Render final markdown version
+            if response_text:
+                # Clear the streamed text and re-render as markdown
+                console.print()  # Newline after streaming
+                console.print("[green bold]Assistant:[/green bold]")
+                console.print(Markdown(response))
+            else:
+                console.print()
+                console.print("[green bold]Assistant:[/green bold]")
+                console.print(Markdown(response))
+
+            console.print()
+
+            # Restore original
+            self._harness._tool_registry.execute_async = original_execute
+
+            # Update context status
+            self._show_context_status()
 
         except KeyboardInterrupt:
-            print(f"\n{C.DIM}(interrupted){C.RESET}")
+            console.print("\n[dim](interrupted)[/dim]")
         except Exception as e:
-            print_error(str(e))
+            console.print(f"\n[red bold]Error:[/red bold] {e}")
 
     async def _handle_command(self, command: str):
         """Handle slash commands."""
@@ -412,83 +466,78 @@ class HarnessTUI:
 
         elif cmd == "/resume":
             if not arg:
-                print_error("Usage: /resume <session-id>")
+                console.print("[red]Usage: /resume <session-id>[/red]")
                 return
             try:
                 await self._harness.resume_session(arg)
                 self._session_id = arg
                 session = self._harness._session
-                print_system(f"Resumed session: {session.id}")
+                console.print(f"[magenta]Resumed session: {session.id}[/magenta]")
                 recent = session.messages[-4:] if len(session.messages) > 4 else session.messages
                 for msg in recent:
                     if msg.role == "user":
-                        print(f"  {C.BLUE}You:{C.RESET} {msg.content[:80]}")
+                        console.print(f"  [blue]You:[/blue] {msg.content[:80]}")
                     elif msg.role == "assistant":
-                        print(f"  {C.GREEN}Assistant:{C.RESET} {msg.content[:80]}")
-                print()
+                        console.print(f"  [green]Assistant:[/green] {msg.content[:80]}")
+                console.print()
+                self._show_context_status()
             except Exception as e:
-                print_error(f"Failed to resume: {e}")
+                console.print(f"[red]Failed to resume: {e}[/red]")
 
         elif cmd == "/new":
             self._session_id = await self._harness.start_session()
-            print_system(f"New session: {self._session_id}\n")
+            console.print(f"[magenta]New session: {self._session_id}[/magenta]\n")
+            self._show_context_status()
 
         elif cmd == "/skills":
             skills = await self._harness.list_skills()
             show_skills(skills)
 
         elif cmd == "/tools":
-            # Show built-in tools
             tools = self._harness._tool_registry.get_all_tools()
-            show_tools(tools)
-            # Show MCP tools if any
             mcp_tools = await self._harness.list_mcp_tools()
-            if mcp_tools:
-                print(f"{C.BOLD}MCP Tools:{C.RESET}")
-                for t in mcp_tools:
-                    source = t.get("source", "mcp")
-                    print(f"  {C.MAGENTA}{t['name']}{C.RESET} -- {t['description'][:60]} {C.DIM}[{source}]{C.RESET}")
-                print()
+            show_tools(tools, mcp_tools)
 
         elif cmd == "/history":
             session = self._harness._session
             if not session or not session.messages:
-                print_info("No messages in current session.\n")
+                console.print("[dim]No messages in current session.[/dim]\n")
                 return
-            print(f"\n{C.BOLD}History ({len(session.messages)} messages):{C.RESET}")
+            console.print(f"\n[bold]History ({len(session.messages)} messages):[/bold]")
             for msg in session.messages:
                 if msg.role == "user":
-                    print(f"  {C.BLUE}You:{C.RESET} {msg.content[:100]}")
+                    console.print(f"  [blue]You:[/blue] {msg.content[:100]}")
                 elif msg.role == "assistant":
                     preview = msg.content[:100] if msg.content else "(tool call)"
-                    print(f"  {C.GREEN}Assistant:{C.RESET} {preview}")
+                    console.print(f"  [green]Assistant:[/green] {preview}")
                 elif msg.role == "tool":
-                    print(f"  {C.YELLOW}Tool [{msg.name}]:{C.RESET} {msg.content[:80]}")
-            print()
+                    console.print(f"  [yellow]Tool [{msg.name}]:[/yellow] {msg.content[:80]}")
+            console.print()
 
         elif cmd == "/clear":
             self._harness._session = Session()
             self._harness._session_manager.save_session(self._harness._session)
             self._session_id = self._harness._session.id
-            print_system(f"Session cleared. New session: {self._session_id}\n")
+            console.print(f"[magenta]Session cleared. New session: {self._session_id}[/magenta]\n")
+            self._show_context_status()
 
         elif cmd == "/save":
             if self._harness._session:
                 self._harness._session_manager.save_session(self._harness._session)
-                print_system(f"Session saved: {self._session_id}\n")
+                console.print(f"[magenta]Session saved: {self._session_id}[/magenta]\n")
 
         elif cmd == "/exit":
             await self._do_exit()
 
         else:
-            print_error(f"Unknown command: {cmd}. Type /help for commands.")
+            console.print(f"[red]Unknown command: {cmd}. Type /help for commands.[/red]")
 
     async def _do_exit(self):
         """Save and exit."""
         if self._harness._session:
             self._harness._session_manager.save_session(self._harness._session)
-        print_system(f"Session saved: {self._session_id}")
-        print(f"{C.DIM}Goodbye!{C.RESET}")
+        console.print(f"[magenta]Session saved: {self._session_id}[/magenta]")
+        console.print("[dim]Goodbye![/dim]")
         self._running = False
 
 
@@ -510,16 +559,6 @@ Examples:
   harness --tools                  List available tools
   harness --api                    Start REST API server
   harness --init                   Initialize .harness/ workspace
-
-MCP Servers:
-  Add MCP servers to .harness/config.yaml under mcp_servers:
-    mcp_servers:
-      - name: filesystem
-        command: npx
-        args: ["-y", "@modelcontextprotocol/server-filesystem", "."]
-      - name: context7
-        command: npx
-        args: ["-y", "@upstash/context7-mcp"]
 
 Workspace:
   Creates .harness/ in the current directory for:
@@ -559,7 +598,7 @@ def main():
 
     # Disable colors if requested or not a terminal
     if args.no_color or not sys.stdout.isatty():
-        C.disable()
+        console.no_color = True
 
     # Setup logging
     import logging
@@ -573,12 +612,12 @@ def main():
         workspace = get_workspace()
         config_path = get_config_path()
         env_path = get_env_path()
-        print(f"Initialized .harness/ workspace in: {workspace.parent}")
-        print(f"  Config: {config_path}")
-        print(f"  Sessions: {workspace / 'sessions'}")
-        print(f"  Vault: {workspace / 'vault'}")
-        print(f"  Skills: {workspace / 'skills'}")
-        print(f"  Env: {env_path}")
+        console.print(f"[green]Initialized .harness/ workspace in: {workspace.parent}[/green]")
+        console.print(f"  Config: {config_path}")
+        console.print(f"  Sessions: {workspace / 'sessions'}")
+        console.print(f"  Vault: {workspace / 'vault'}")
+        console.print(f"  Skills: {workspace / 'skills'}")
+        console.print(f"  Env: {env_path}")
         return
 
     # Load or create config
@@ -595,9 +634,9 @@ def main():
     try:
         config = load_config(str(config_path))
     except Exception as e:
-        print_error(f"Failed to load config: {e}")
-        print_info(f"Config: {config_path}")
-        print_info(f"Edit {env_path} to set your API key.")
+        console.print(f"[red bold]Error:[/red bold] Failed to load config: {e}")
+        console.print(f"[dim]Config: {config_path}[/dim]")
+        console.print(f"[dim]Edit {env_path} to set your API key.[/dim]")
         sys.exit(1)
 
     # Create harness
@@ -626,13 +665,9 @@ def main():
         asyncio.run(harness._start_mcp_servers())
         mcp_tools = asyncio.run(harness.list_mcp_tools())
         if mcp_tools:
-            print(f"\n{C.BOLD}MCP Servers & Tools:{C.RESET}")
-            for t in mcp_tools:
-                source = t.get("source", "mcp")
-                print(f"  {C.MAGENTA}{t['name']}{C.RESET} -- {t['description'][:60]} {C.DIM}[{source}]{C.RESET}")
-            print()
+            show_tools([], mcp_tools)
         else:
-            print(f"\n{C.DIM}No MCP servers configured. Edit .harness/config.yaml to add them.{C.RESET}\n")
+            console.print("\n[dim]No MCP servers configured. Edit .harness/config.yaml to add them.[/dim]\n")
         return
 
     # Startup for interactive/API modes
@@ -641,18 +676,18 @@ def main():
             await harness.startup()
         except asyncio.CancelledError:
             if args.verbose:
-                print_info("Startup cancelled (some MCP servers may have failed)")
+                console.print("[dim]Startup cancelled (some MCP servers may have failed)[/dim]")
         except Exception as e:
             if args.verbose:
-                print_info(f"Startup warning: {e}")
+                console.print(f"[dim]Startup warning: {e}[/dim]")
 
         try:
             if args.api:
                 import uvicorn
                 from harness.api.server import app, set_harness
                 set_harness(harness)
-                print_system(f"Starting API server on {args.host}:{args.port}")
-                print_info(f"Docs: http://{args.host}:{args.port}/docs")
+                console.print(f"[magenta]Starting API server on {args.host}:{args.port}[/magenta]")
+                console.print(f"[dim]Docs: http://{args.host}:{args.port}/docs[/dim]")
                 uvicorn.run(app, host=args.host, port=args.port)
                 return
 

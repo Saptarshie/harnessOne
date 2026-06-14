@@ -1,0 +1,17 @@
+{
+  "id": "36e165b0",
+  "created": "2026-06-14T11:30:10.818512+00:00",
+  "last_active": "2026-06-14T11:30:18.182776+00:00",
+  "title": "explain what is a binary search tree in 3 lines with a code ...",
+  "messages": [
+    {
+      "role": "user",
+      "content": "explain what is a binary search tree in 3 lines with a code example"
+    },
+    {
+      "role": "assistant",
+      "content": "## Binary Search Tree (BST)\n\nA **Binary Search Tree** is a tree data structure where each node has at most two children, and for any node, all values in its left subtree are smaller and all values in its right subtree are larger. This ordering property enables efficient O(log n) average-time lookups, insertions, and deletions. BSTs are fundamental building blocks for implementing associative arrays, priority queues, and efficient search operations.\n\nHere's a simple Python implementation:\n\n```python\nclass Node:\n    def __init__(self, val):\n        self.val = val\n        self.left = None\n        self.right = None\n\nclass BST:\n    def __init__(self):\n        self.root = None\n    \n    def insert(self, val):\n        if not self.root:\n            self.root = Node(val)\n        else:\n            self._insert(self.root, val)\n    \n    def _insert(self, node, val):\n        if val < node.val:\n            if node.left:\n                self._insert(node.left, val)\n            else:\n                node.left = Node(val)\n        else:\n            if node.right:\n                self._insert(node.right, val)\n            else:\n                node.right = Node(val)\n    \n    def search(self, val):\n        node = self.root\n        while node:\n            if val == node.val:\n                return True\n            elif val < node.val:\n                node = node.left\n            else:\n                node = node.right\n        return False\n    \n    def inorder(self):\n        \"\"\"Returns sorted values (inorder traversal)\"\"\"\n        result = []\n        def dfs(node):\n            if node:\n                dfs(node.left)\n                result.append(node.val)\n                dfs(node.right)\n        dfs(self.root)\n        return result\n\n# Usage example\nbst = BST()\nbst.insert(10)\nbst.insert(5)\nbst.insert(15)\nbst.insert(3)\nbst.insert(7)\n\nprint(bst.search(7))   # True\nprint(bst.search(12))  # False\nprint(bst.inorder())   # [3, 5, 7, 10, 15] \u2014 always sorted!\n```"
+    }
+  ],
+  "metadata": {}
+}

@@ -156,11 +156,19 @@ class CognitiveHarness:
         """Resume an existing session."""
         return await self.start_session(session_id)
 
-    async def chat(self, message: str) -> str:
-        """Send a message and get a response."""
+    async def chat(self, message: str, on_stream=None) -> str:
+        """Send a message and get a response.
+
+        Args:
+            message: User message.
+            on_stream: Optional streaming callback (delta, is_done, usage) -> None
+
+        Returns:
+            Assistant response text.
+        """
         if not self._chat_engine:
             await self._start_session_if_needed()
-        return await self._chat_engine.chat(message)
+        return await self._chat_engine.chat(message, on_stream=on_stream)
 
     async def _start_session_if_needed(self):
         """Start a session if one isn't active."""
