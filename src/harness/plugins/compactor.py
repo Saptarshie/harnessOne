@@ -66,6 +66,5 @@ class CompactorNode(BaseNode):
 
         state["checkpoints"].append(response.content)
         state["sub_agent_results"] = []
-        state["is_stuck"] = False
 
         return state

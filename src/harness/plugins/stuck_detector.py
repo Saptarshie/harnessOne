@@ -34,16 +34,18 @@ class StuckDetectorNode(BaseNode):
             if msg.get("role") == "assistant"
         ]
 
-        if len(assistant_messages) < 2:
+        if not assistant_messages:
             state["is_stuck"] = False
             return state
 
         is_stuck = False
 
-        if self._has_repeated_phrases(assistant_messages):
+        # Check for hedging language (works with even 1 message)
+        if self._has_excessive_hedging(assistant_messages):
             is_stuck = True
 
-        if self._has_excessive_hedging(assistant_messages):
+        # Check for repeated phrases (needs 2+ messages)
+        if len(assistant_messages) >= 2 and self._has_repeated_phrases(assistant_messages):
             is_stuck = True
 
         state["is_stuck"] = is_stuck
@@ -71,4 +73,5 @@ class StuckDetectorNode(BaseNode):
         hedging_count = sum(
             1 for pattern in HEDGING_PATTERNS if re.search(pattern, recent)
         )
-        return hedging_count >= 3
+        # 2+ hedging patterns in recent messages = likely stuck
+        return hedging_count >= 2

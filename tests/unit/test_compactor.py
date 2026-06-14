@@ -73,7 +73,6 @@ class TestCompactorNode:
         assert len(result["checkpoints"]) == 2
         assert result["checkpoints"][1] == compacted
         assert result["sub_agent_results"] == []
-        assert result["is_stuck"] is False
 
     @pytest.mark.asyncio
     async def test_skips_when_no_results(self):
