@@ -9,3 +9,4 @@ logs/
 .env
 .venv/
 venv/
+user-references-and-feedback(ignore-it)/
